@@ -37,7 +37,7 @@ export default function Scanner() {
   };
 
   const stopScanning = async () => {
-    if (scannerRef.current) {
+    if (scannerRef.current && scanning) {
       await scannerRef.current.stop().catch(() => {});
       scannerRef.current = null;
     }
