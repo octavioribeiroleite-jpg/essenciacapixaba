@@ -14,7 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      products: {
+        Row: {
+          brand: string | null
+          cost_per_ml: number
+          created_at: string
+          current_ml: number
+          id: string
+          image_url: string | null
+          name: string
+          sale_price_per_ml: number
+          total_ml: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand?: string | null
+          cost_per_ml?: number
+          created_at?: string
+          current_ml?: number
+          id?: string
+          image_url?: string | null
+          name: string
+          sale_price_per_ml?: number
+          total_ml?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand?: string | null
+          cost_per_ml?: number
+          created_at?: string
+          current_ml?: number
+          id?: string
+          image_url?: string | null
+          name?: string
+          sale_price_per_ml?: number
+          total_ml?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sales: {
+        Row: {
+          cost_price: number
+          created_at: string
+          id: string
+          ml_sold: number
+          product_id: string
+          sale_price: number
+          user_id: string
+        }
+        Insert: {
+          cost_price?: number
+          created_at?: string
+          id?: string
+          ml_sold: number
+          product_id: string
+          sale_price?: number
+          user_id: string
+        }
+        Update: {
+          cost_price?: number
+          created_at?: string
+          id?: string
+          ml_sold?: number
+          product_id?: string
+          sale_price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
