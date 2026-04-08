@@ -7,10 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Droplets } from "lucide-react";
 import { toast } from "sonner";
 
+function usernameToEmail(username: string) {
+  const clean = username.trim().toLowerCase().replace(/\s+/g, ".");
+  return `${clean}@essenciacapixaba.app`;
+}
+
 export default function Login() {
   const { user, loading, signIn, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -27,18 +32,19 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    const email = usernameToEmail(username);
 
     if (isSignUp) {
       const { error } = await signUp(email, password);
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success("Conta criada! Verifique seu email para confirmar.");
+        toast.success("Conta criada com sucesso!");
       }
     } else {
       const { error } = await signIn(email, password);
       if (error) {
-        toast.error("Email ou senha incorretos.");
+        toast.error("Usuário ou senha incorretos.");
       }
     }
     setSubmitting(false);
@@ -58,23 +64,30 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="bg-secondary border-border"
-            />
-            <Input
-              type="password"
-              placeholder="Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="bg-secondary border-border"
-            />
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Nome de Usuário</label>
+              <Input
+                type="text"
+                placeholder="Ex: ESSENCIA CAPIXABA"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                className="bg-secondary border-border"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Senha</label>
+              <Input
+                type="password"
+                placeholder="Sua senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                inputMode="numeric"
+                className="bg-secondary border-border"
+              />
+            </div>
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? "Aguarde..." : isSignUp ? "Criar Conta" : "Entrar"}
             </Button>
