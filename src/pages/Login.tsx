@@ -12,10 +12,11 @@ function usernameToEmail(username: string) {
   return `${clean}@essenciacapixaba.app`;
 }
 
+const FIXED_USERNAME = "ESSENCIA CAPIXABA";
+
 export default function Login() {
   const { user, loading, signIn, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
