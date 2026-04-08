@@ -12,10 +12,11 @@ function usernameToEmail(username: string) {
   return `${clean}@essenciacapixaba.app`;
 }
 
+const FIXED_USERNAME = "ESSENCIA CAPIXABA";
+
 export default function Login() {
   const { user, loading, signIn, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,7 +33,7 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    const email = usernameToEmail(username);
+    const email = usernameToEmail(FIXED_USERNAME);
 
     if (isSignUp) {
       const { error } = await signUp(email, password);
@@ -64,17 +65,6 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Nome de Usuário</label>
-              <Input
-                type="text"
-                placeholder="Ex: ESSENCIA CAPIXABA"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                className="bg-secondary border-border"
-              />
-            </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Senha</label>
               <Input
