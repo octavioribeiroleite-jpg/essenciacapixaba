@@ -84,7 +84,7 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                inputMode="numeric"
+                
                 className="bg-secondary border-border"
               />
             </div>
