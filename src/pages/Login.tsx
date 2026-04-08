@@ -66,7 +66,6 @@ export default function Login() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-            <div>
               <label className="text-xs text-muted-foreground mb-1 block">Senha</label>
               <Input
                 type="password"
