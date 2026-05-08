@@ -16,6 +16,7 @@ type Product = {
   id: string;
   name: string;
   brand: string | null;
+  total_ml: number;
   current_ml: number;
   cost_per_ml: number;
   sale_price_per_ml: number;
@@ -28,6 +29,7 @@ export default function Sales() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
+  const [mode, setMode] = useState<"frasco" | "decant" | null>(null);
   const [ml, setMl] = useState("");
   const [price, setPrice] = useState("");
 
@@ -36,7 +38,7 @@ export default function Sales() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id,name,brand,current_ml,cost_per_ml,sale_price_per_ml,image_url")
+        .select("id,name,brand,total_ml,current_ml,cost_per_ml,sale_price_per_ml,image_url")
         .gt("current_ml", 0)
         .order("name");
       if (error) throw error;
@@ -56,9 +58,23 @@ export default function Sales() {
 
   const openSale = (p: Product) => {
     setSelected(p);
+    setMode(null);
     setMl("");
     setPrice("");
     setPickerOpen(false);
+  };
+
+  const pickMode = (m: "frasco" | "decant") => {
+    if (!selected) return;
+    setMode(m);
+    if (m === "frasco") {
+      const fullMl = Number(selected.total_ml);
+      setMl(String(fullMl));
+      setPrice((fullMl * Number(selected.sale_price_per_ml)).toFixed(2));
+    } else {
+      setMl("");
+      setPrice("");
+    }
   };
 
   const setQuantity = (qty: number) => {
@@ -78,6 +94,7 @@ export default function Sales() {
   const sellMutation = useMutation({
     mutationFn: async () => {
       if (!selected || !user) throw new Error("Selecione um produto");
+      if (!mode) throw new Error("Escolha frasco fechado ou decant");
       const mlNum = parseFloat(ml);
       const priceNum = parseFloat(price);
       if (!mlNum || mlNum <= 0) throw new Error("Informe a quantidade em ml");
@@ -107,6 +124,7 @@ export default function Sales() {
       queryClient.invalidateQueries({ queryKey: ["product-sales"] });
       toast.success("Venda registrada!");
       setSelected(null);
+      setMode(null);
       setMl("");
       setPrice("");
     },
@@ -183,18 +201,79 @@ export default function Sales() {
       </Dialog>
 
       {/* Sale dialog */}
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+      <Dialog
+        open={!!selected}
+        onOpenChange={(o) => {
+          if (!o) {
+            setSelected(null);
+            setMode(null);
+          }
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-foreground">{selected?.name}</DialogTitle>
           </DialogHeader>
-          {selected && (
+          {selected && !mode && (
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
+                Como vai vender este perfume?
+              </p>
+              <button
+                onClick={() => pickMode("frasco")}
+                disabled={Number(selected.current_ml) < Number(selected.total_ml)}
+                className="w-full text-left rounded-lg border-2 border-primary/40 bg-primary/5 p-4 hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-primary">Frasco Fechado</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {Number(selected.total_ml).toFixed(0)}ml completos · R${" "}
+                      {(Number(selected.total_ml) * Number(selected.sale_price_per_ml)).toFixed(2)}
+                    </p>
+                  </div>
+                  <span className="text-xl">📦</span>
+                </div>
+                {Number(selected.current_ml) < Number(selected.total_ml) && (
+                  <p className="text-[10px] text-warning mt-1">
+                    Indisponível: frasco já foi aberto.
+                  </p>
+                )}
+              </button>
+              <button
+                onClick={() => pickMode("decant")}
+                className="w-full text-left rounded-lg border border-border bg-secondary p-4 hover:bg-secondary/80 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Decant</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Vender em ml · estoque {Number(selected.current_ml).toFixed(0)}ml
+                    </p>
+                  </div>
+                  <span className="text-xl">🧴</span>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {selected && mode && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                <button
+                  onClick={() => setMode(null)}
+                  className="text-primary hover:underline mr-2"
+                >
+                  ← Trocar
+                </button>
+                <span className="font-medium text-foreground">
+                  {mode === "frasco" ? "Frasco Fechado" : "Decant"}
+                </span>{" · "}
                 Estoque: <span className="text-foreground font-medium">{Number(selected.current_ml).toFixed(0)}ml</span>{" "}
                 · Sugerido: R$ {Number(selected.sale_price_per_ml).toFixed(2)}/ml
               </p>
 
+              {mode === "decant" && (
               <div className="grid grid-cols-4 gap-2">
                 {QUICK_SIZES.map((qty) => (
                   <Button
@@ -208,6 +287,7 @@ export default function Sales() {
                   </Button>
                 ))}
               </div>
+              )}
 
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Quantidade (ml)</label>
@@ -219,6 +299,7 @@ export default function Sales() {
                   max={Number(selected.current_ml)}
                   value={ml}
                   onChange={(e) => onMlChange(e.target.value)}
+                  readOnly={mode === "frasco"}
                   className="bg-secondary border-border"
                   placeholder="Ex: 5"
                 />
