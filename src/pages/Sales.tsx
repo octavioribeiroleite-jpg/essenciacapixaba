@@ -201,18 +201,79 @@ export default function Sales() {
       </Dialog>
 
       {/* Sale dialog */}
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+      <Dialog
+        open={!!selected}
+        onOpenChange={(o) => {
+          if (!o) {
+            setSelected(null);
+            setMode(null);
+          }
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-foreground">{selected?.name}</DialogTitle>
           </DialogHeader>
-          {selected && (
+          {selected && !mode && (
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
+                Como vai vender este perfume?
+              </p>
+              <button
+                onClick={() => pickMode("frasco")}
+                disabled={Number(selected.current_ml) < Number(selected.total_ml)}
+                className="w-full text-left rounded-lg border-2 border-primary/40 bg-primary/5 p-4 hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-primary">Frasco Fechado</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {Number(selected.total_ml).toFixed(0)}ml completos · R${" "}
+                      {(Number(selected.total_ml) * Number(selected.sale_price_per_ml)).toFixed(2)}
+                    </p>
+                  </div>
+                  <span className="text-xl">📦</span>
+                </div>
+                {Number(selected.current_ml) < Number(selected.total_ml) && (
+                  <p className="text-[10px] text-warning mt-1">
+                    Indisponível: frasco já foi aberto.
+                  </p>
+                )}
+              </button>
+              <button
+                onClick={() => pickMode("decant")}
+                className="w-full text-left rounded-lg border border-border bg-secondary p-4 hover:bg-secondary/80 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Decant</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Vender em ml · estoque {Number(selected.current_ml).toFixed(0)}ml
+                    </p>
+                  </div>
+                  <span className="text-xl">🧴</span>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {selected && mode && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                <button
+                  onClick={() => setMode(null)}
+                  className="text-primary hover:underline mr-2"
+                >
+                  ← Trocar
+                </button>
+                <span className="font-medium text-foreground">
+                  {mode === "frasco" ? "Frasco Fechado" : "Decant"}
+                </span>{" · "}
                 Estoque: <span className="text-foreground font-medium">{Number(selected.current_ml).toFixed(0)}ml</span>{" "}
                 · Sugerido: R$ {Number(selected.sale_price_per_ml).toFixed(2)}/ml
               </p>
 
+              {mode === "decant" && (
               <div className="grid grid-cols-4 gap-2">
                 {QUICK_SIZES.map((qty) => (
                   <Button
@@ -226,6 +287,7 @@ export default function Sales() {
                   </Button>
                 ))}
               </div>
+              )}
 
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Quantidade (ml)</label>
@@ -237,6 +299,7 @@ export default function Sales() {
                   max={Number(selected.current_ml)}
                   value={ml}
                   onChange={(e) => onMlChange(e.target.value)}
+                  readOnly={mode === "frasco"}
                   className="bg-secondary border-border"
                   placeholder="Ex: 5"
                 />
