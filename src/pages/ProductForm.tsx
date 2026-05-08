@@ -17,8 +17,8 @@ export default function ProductForm() {
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [totalMl, setTotalMl] = useState("");
-  const [costPerMl, setCostPerMl] = useState("");
-  const [salePricePerMl, setSalePricePerMl] = useState("");
+  const [totalCost, setTotalCost] = useState("");
+  const [totalSalePrice, setTotalSalePrice] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -51,14 +51,18 @@ export default function ProductForm() {
       }
 
       const ml = parseFloat(totalMl);
+      const cost = parseFloat(totalCost) || 0;
+      const sale = parseFloat(totalSalePrice) || 0;
+      const costPerMl = ml > 0 ? cost / ml : 0;
+      const salePerMl = ml > 0 ? sale / ml : 0;
       const { error } = await supabase.from("products").insert({
         user_id: user.id,
         name: name.trim(),
         brand: brand.trim() || null,
         total_ml: ml,
         current_ml: ml,
-        cost_per_ml: parseFloat(costPerMl) || 0,
-        sale_price_per_ml: parseFloat(salePricePerMl) || 0,
+        cost_per_ml: costPerMl,
+        sale_price_per_ml: salePerMl,
         image_url,
       });
       if (error) throw error;
@@ -72,6 +76,13 @@ export default function ProductForm() {
       toast.error(err.message || "Erro ao cadastrar produto.");
     },
   });
+
+  const mlNum = parseFloat(totalMl) || 0;
+  const costNum = parseFloat(totalCost) || 0;
+  const saleNum = parseFloat(totalSalePrice) || 0;
+  const costPerMl = mlNum > 0 ? costNum / mlNum : 0;
+  const salePerMl = mlNum > 0 ? saleNum / mlNum : 0;
+  const profitPerMl = salePerMl - costPerMl;
 
   return (
     <div className="space-y-4">
@@ -99,20 +110,36 @@ export default function ProductForm() {
               <label className="text-xs text-muted-foreground mb-1 block">Marca</label>
               <Input value={brand} onChange={(e) => setBrand(e.target.value)} className="bg-secondary border-border" placeholder="Ex: Dior" />
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">ML Total *</label>
-                <Input type="number" step="0.1" min="0" value={totalMl} onChange={(e) => setTotalMl(e.target.value)} required className="bg-secondary border-border" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Custo/ml</label>
-                <Input type="number" step="0.01" min="0" value={costPerMl} onChange={(e) => setCostPerMl(e.target.value)} className="bg-secondary border-border" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Venda/ml</label>
-                <Input type="number" step="0.01" min="0" value={salePricePerMl} onChange={(e) => setSalePricePerMl(e.target.value)} className="bg-secondary border-border" />
-              </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">ML Total do Frasco *</label>
+              <Input type="number" inputMode="decimal" step="0.1" min="0" value={totalMl} onChange={(e) => setTotalMl(e.target.value)} required className="bg-secondary border-border" placeholder="Ex: 100" />
             </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Preço Pago no Frasco (R$) *</label>
+              <Input type="number" inputMode="decimal" step="0.01" min="0" value={totalCost} onChange={(e) => setTotalCost(e.target.value)} required className="bg-secondary border-border" placeholder="Ex: 350,00" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Preço de Revenda do Frasco (R$) *</label>
+              <Input type="number" inputMode="decimal" step="0.01" min="0" value={totalSalePrice} onChange={(e) => setTotalSalePrice(e.target.value)} required className="bg-secondary border-border" placeholder="Ex: 800,00" />
+            </div>
+
+            {mlNum > 0 && (
+              <div className="rounded-lg bg-secondary/60 border border-border p-3 space-y-1.5">
+                <p className="text-xs text-muted-foreground mb-1">Cálculo automático</p>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Custo por ml</span>
+                  <span className="font-medium text-foreground">R$ {costPerMl.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Venda por ml</span>
+                  <span className="font-medium text-primary">R$ {salePerMl.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs pt-1 border-t border-border">
+                  <span className="text-muted-foreground">Lucro por ml</span>
+                  <span className="font-bold text-success">R$ {profitPerMl.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
 
             {/* Image upload */}
             <div>

@@ -141,14 +141,36 @@ export default function ProductDetail() {
               </div>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-secondary rounded-lg p-2">
-              <span className="text-muted-foreground">Custo/ml</span>
-              <p className="font-medium text-foreground">R$ {Number(product.cost_per_ml).toFixed(2)}</p>
+          <div className="mt-3 space-y-2 text-xs">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-secondary rounded-lg p-2">
+                <span className="text-muted-foreground">Pago no frasco</span>
+                <p className="font-medium text-foreground">
+                  R$ {(Number(product.cost_per_ml) * Number(product.total_ml)).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-secondary rounded-lg p-2">
+                <span className="text-muted-foreground">Revenda do frasco</span>
+                <p className="font-medium text-primary">
+                  R$ {(Number(product.sale_price_per_ml) * Number(product.total_ml)).toFixed(2)}
+                </p>
+              </div>
             </div>
-            <div className="bg-secondary rounded-lg p-2">
-              <span className="text-muted-foreground">Venda/ml</span>
-              <p className="font-medium text-primary">R$ {Number(product.sale_price_per_ml).toFixed(2)}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-secondary rounded-lg p-2">
+                <span className="text-muted-foreground">Custo/ml</span>
+                <p className="font-medium text-foreground">R$ {Number(product.cost_per_ml).toFixed(2)}</p>
+              </div>
+              <div className="bg-secondary rounded-lg p-2">
+                <span className="text-muted-foreground">Venda/ml</span>
+                <p className="font-medium text-primary">R$ {Number(product.sale_price_per_ml).toFixed(2)}</p>
+              </div>
+            </div>
+            <div className="bg-secondary rounded-lg p-2 flex justify-between items-center">
+              <span className="text-muted-foreground">Lucro/ml</span>
+              <span className="font-bold text-success">
+                R$ {(Number(product.sale_price_per_ml) - Number(product.cost_per_ml)).toFixed(2)}
+              </span>
             </div>
           </div>
         </CardContent>
