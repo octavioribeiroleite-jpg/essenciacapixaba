@@ -124,6 +124,7 @@ export default function Sales() {
       queryClient.invalidateQueries({ queryKey: ["product-sales"] });
       toast.success("Venda registrada!");
       setSelected(null);
+      setMode(null);
       setMl("");
       setPrice("");
     },
