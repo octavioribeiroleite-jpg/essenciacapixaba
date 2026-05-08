@@ -12,6 +12,7 @@ import Products from "@/pages/Products";
 import ProductForm from "@/pages/ProductForm";
 import ProductDetail from "@/pages/ProductDetail";
 import Scanner from "@/pages/Scanner";
+import Sales from "@/pages/Sales";
 import Reports from "@/pages/Reports";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="/products/new" element={<ProductForm />} />
               <Route path="/products/:id" element={<ProductDetail />} />
               <Route path="/scan" element={<Scanner />} />
+              <Route path="/sell" element={<Sales />} />
               <Route path="/reports" element={<Reports />} />
             </Route>
             <Route path="*" element={<NotFound />} />

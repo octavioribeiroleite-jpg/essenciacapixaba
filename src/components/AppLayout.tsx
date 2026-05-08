@@ -1,12 +1,12 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, ScanLine, BarChart3, LogOut, Droplets } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, BarChart3, LogOut, Droplets } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Início" },
   { to: "/products", icon: Package, label: "Produtos" },
-  { to: "/scan", icon: ScanLine, label: "Escanear" },
+  { to: "/sell", icon: ShoppingCart, label: "Vender" },
   { to: "/reports", icon: BarChart3, label: "Relatórios" },
 ];
 
@@ -47,7 +47,7 @@ export default function AppLayout() {
               className={({ isActive }) =>
                 cn(
                   "flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs transition-colors",
-                  item.to === "/scan"
+                  item.to === "/sell"
                     ? "relative -mt-5"
                     : "",
                   isActive ? "text-primary" : "text-muted-foreground"
@@ -56,7 +56,7 @@ export default function AppLayout() {
             >
               {({ isActive }) => (
                 <>
-                  {item.to === "/scan" ? (
+                  {item.to === "/sell" ? (
                     <div className={cn(
                       "flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-colors",
                       isActive ? "bg-primary text-primary-foreground" : "bg-primary/80 text-primary-foreground"
@@ -66,7 +66,7 @@ export default function AppLayout() {
                   ) : (
                     <item.icon className="h-5 w-5" />
                   )}
-                  <span className={item.to === "/scan" ? "mt-1" : ""}>{item.label}</span>
+                  <span className={item.to === "/sell" ? "mt-1" : ""}>{item.label}</span>
                 </>
               )}
             </NavLink>
