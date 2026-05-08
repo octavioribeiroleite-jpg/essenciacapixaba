@@ -58,9 +58,23 @@ export default function Sales() {
 
   const openSale = (p: Product) => {
     setSelected(p);
+    setMode(null);
     setMl("");
     setPrice("");
     setPickerOpen(false);
+  };
+
+  const pickMode = (m: "frasco" | "decant") => {
+    if (!selected) return;
+    setMode(m);
+    if (m === "frasco") {
+      const fullMl = Number(selected.total_ml);
+      setMl(String(fullMl));
+      setPrice((fullMl * Number(selected.sale_price_per_ml)).toFixed(2));
+    } else {
+      setMl("");
+      setPrice("");
+    }
   };
 
   const setQuantity = (qty: number) => {
@@ -80,6 +94,7 @@ export default function Sales() {
   const sellMutation = useMutation({
     mutationFn: async () => {
       if (!selected || !user) throw new Error("Selecione um produto");
+      if (!mode) throw new Error("Escolha frasco fechado ou decant");
       const mlNum = parseFloat(ml);
       const priceNum = parseFloat(price);
       if (!mlNum || mlNum <= 0) throw new Error("Informe a quantidade em ml");
