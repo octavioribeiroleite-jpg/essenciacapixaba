@@ -16,6 +16,7 @@ type Product = {
   id: string;
   name: string;
   brand: string | null;
+  total_ml: number;
   current_ml: number;
   cost_per_ml: number;
   sale_price_per_ml: number;
@@ -28,6 +29,7 @@ export default function Sales() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
+  const [mode, setMode] = useState<"frasco" | "decant" | null>(null);
   const [ml, setMl] = useState("");
   const [price, setPrice] = useState("");
 
@@ -36,7 +38,7 @@ export default function Sales() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id,name,brand,current_ml,cost_per_ml,sale_price_per_ml,image_url")
+        .select("id,name,brand,total_ml,current_ml,cost_per_ml,sale_price_per_ml,image_url")
         .gt("current_ml", 0)
         .order("name");
       if (error) throw error;
