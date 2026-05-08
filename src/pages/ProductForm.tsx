@@ -213,7 +213,7 @@ export default function ProductForm() {
         <TabsContent value="manual" className="mt-4">
           <Card className="glass-card">
         <CardHeader>
-          <CardTitle className="text-lg text-foreground">Novo Produto</CardTitle>
+          <CardTitle className="text-lg text-foreground">Novo Frasco</CardTitle>
         </CardHeader>
         <CardContent>
           <form
@@ -232,8 +232,11 @@ export default function ProductForm() {
               <Input value={brand} onChange={(e) => setBrand(e.target.value)} className="bg-secondary border-border" placeholder="Ex: Dior" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">ML Total do Frasco *</label>
-              <Input type="number" inputMode="decimal" step="0.1" min="0" value={totalMl} onChange={(e) => setTotalMl(e.target.value)} required className="bg-secondary border-border" placeholder="Ex: 100" />
+              <label className="text-xs text-muted-foreground mb-1 block">Tamanho do Frasco (ml) *</label>
+              <Input type="number" inputMode="decimal" step="0.1" min="0" value={totalMl} onChange={(e) => setTotalMl(e.target.value)} required className="bg-secondary border-border" placeholder="Ex: 100ml = 1 frasco" />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Cada cadastro = 1 frasco. Informe quantos ml ele tem (pode ser menor, ex: 50ml).
+              </p>
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Preço Pago no Frasco (R$) *</label>
