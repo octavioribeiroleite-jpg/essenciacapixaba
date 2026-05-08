@@ -43,14 +43,29 @@ export default function Dashboard() {
 
   const totalProducts = products?.length ?? 0;
   const totalMl = products?.reduce((sum, p) => sum + Number(p.current_ml), 0) ?? 0;
+  const totalFrascos =
+    products?.reduce((sum, p) => {
+      const total = Number(p.total_ml) || 0;
+      const current = Number(p.current_ml) || 0;
+      if (total <= 0) return sum;
+      return sum + current / total;
+    }, 0) ?? 0;
   const lowStock = products?.filter((p) => Number(p.current_ml) < 10) ?? [];
   const monthRevenue = salesThisMonth?.reduce((sum, s) => sum + Number(s.sale_price), 0) ?? 0;
   const monthProfit = salesThisMonth?.reduce((sum, s) => sum + (Number(s.sale_price) - Number(s.cost_price)), 0) ?? 0;
   const recentSales = salesThisMonth?.slice(0, 5) ?? [];
 
+  const frascoLabel =
+    Number.isInteger(totalFrascos) ? `${totalFrascos}` : totalFrascos.toFixed(1);
   const stats = [
-    { label: "Produtos", value: totalProducts, icon: Package, color: "text-primary" },
-    { label: "ML em Estoque", value: `${totalMl.toFixed(0)}ml`, icon: Droplets, color: "text-primary" },
+    { label: "Produtos", value: String(totalProducts), icon: Package, color: "text-primary" },
+    {
+      label: "Frascos em Estoque",
+      value: frascoLabel,
+      sub: `${totalMl.toFixed(0)}ml`,
+      icon: Droplets,
+      color: "text-primary",
+    },
     { label: "Vendas do Mês", value: `R$ ${monthRevenue.toFixed(2)}`, icon: TrendingUp, color: "text-success" },
     { label: "Lucro do Mês", value: `R$ ${monthProfit.toFixed(2)}`, icon: TrendingUp, color: "text-success" },
   ];
@@ -65,10 +80,15 @@ export default function Dashboard() {
           <Card key={stat.label} className="glass-card">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-                <span className="text-xs text-muted-foreground">{stat.label}</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-secondary shrink-0">
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                </span>
+                <span className="text-xs text-muted-foreground truncate">{stat.label}</span>
               </div>
-              <p className="text-lg font-bold text-foreground">{stat.value}</p>
+              <p className="text-lg font-bold text-foreground leading-tight">{stat.value}</p>
+              {"sub" in stat && stat.sub && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">{stat.sub}</p>
+              )}
             </CardContent>
           </Card>
         ))}
