@@ -306,7 +306,7 @@ export default function ProductForm() {
                     <span className="text-xs text-muted-foreground">Toque para enviar foto</span>
                   </div>
                 )}
-                <input type="file" accept="image/*" capture="environment" onChange={handleAiImage} className="hidden" />
+                <input type="file" accept="image/*" onChange={handleAiImage} className="hidden" />
               </label>
               <Button
                 className="w-full"
