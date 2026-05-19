@@ -147,6 +147,57 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Catalog */}
+      <div>
+        <h2 className="text-sm font-medium text-foreground mb-3">Catálogo</h2>
+        {!products || products.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nenhum perfume cadastrado.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {products.map((p) => {
+              const pricePerMl = Number(p.sale_price_per_ml) || 0;
+              const totalMl = Number(p.total_ml) || 0;
+              const currentMl = Number(p.current_ml) || 0;
+              const frascoPrice = pricePerMl * totalMl;
+              return (
+                <Card
+                  key={p.id}
+                  className="glass-card cursor-pointer hover:border-primary/30 transition-colors overflow-hidden"
+                  onClick={() => navigate(`/products/${p.id}`)}
+                >
+                  {p.image_url ? (
+                    <img
+                      src={p.image_url}
+                      alt={p.name}
+                      className="h-28 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-28 w-full bg-secondary flex items-center justify-center text-3xl">
+                      🧴
+                    </div>
+                  )}
+                  <CardContent className="p-3 space-y-1">
+                    <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{p.brand || "Sem marca"}</p>
+                    <div className="pt-1 border-t border-border/50 mt-1">
+                      <p className="text-xs text-muted-foreground">
+                        Decant: <span className="text-foreground font-medium">R$ {pricePerMl.toFixed(2)}/ml</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Frasco {totalMl.toFixed(0)}ml: <span className="text-primary font-semibold">R$ {frascoPrice.toFixed(2)}</span>
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Estoque: {currentMl.toFixed(0)}ml
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
