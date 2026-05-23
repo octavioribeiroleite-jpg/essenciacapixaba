@@ -1,15 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Upload, Sparkles, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, Upload, Sparkles, Trash2, Loader2, Image as ImageIcon, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { logMovement } from "@/lib/stockMovements";
+
+const FIXED_PROFIT = 100; // R$ de lucro por frasco
+
+async function fetchImageInBackground(productId: string, userId: string, name: string, brand: string | null) {
+  try {
+    await supabase.functions.invoke("fetch-perfume-image", {
+      body: { productId, userId, name, brand },
+    });
+  } catch {
+    // silencioso — produto fica sem foto
+  }
+}
 
 export default function ProductForm() {
   const { user } = useAuth();
@@ -21,8 +34,20 @@ export default function ProductForm() {
   const [totalMl, setTotalMl] = useState("");
   const [totalCost, setTotalCost] = useState("");
   const [totalSalePrice, setTotalSalePrice] = useState("");
+  const [saleTouched, setSaleTouched] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Preço de venda automático = custo + R$ 100 (até o usuário editar manualmente)
+  useEffect(() => {
+    if (saleTouched) return;
+    const c = parseFloat(totalCost);
+    if (!isNaN(c) && c >= 0) {
+      setTotalSalePrice((c + FIXED_PROFIT).toFixed(2));
+    } else {
+      setTotalSalePrice("");
+    }
+  }, [totalCost, saleTouched]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,6 +106,9 @@ export default function ProductForm() {
           mlAfter: ml,
           note: "Estoque inicial (cadastro)",
         });
+        if (!image_url) {
+          fetchImageInBackground(inserted.id, user.id, name.trim(), brand.trim() || null);
+        }
       }
     },
     onSuccess: () => {
@@ -108,10 +136,12 @@ export default function ProductForm() {
     total_ml: string;
     total_cost: string;
     total_sale: string;
+    saleTouched?: boolean;
   };
   const [aiImage, setAiImage] = useState<File | null>(null);
   const [aiPreview, setAiPreview] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<DraftItem[]>([]);
+  const [aiText, setAiText] = useState("");
 
   const handleAiImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -156,7 +186,43 @@ export default function ProductForm() {
           brand: it.brand || "",
           total_ml: it.total_ml ? String(it.total_ml) : "",
           total_cost: cost ? cost.toFixed(2) : "",
-          total_sale: cost ? (cost * 2.3).toFixed(2) : "",
+          total_sale: cost ? (cost + FIXED_PROFIT).toFixed(2) : "",
+        };
+      });
+      setDrafts(newDrafts);
+      if (!newDrafts.length) toast.warning("Nenhum perfume identificado.");
+      else toast.success(`${newDrafts.length} perfume(s) detectado(s).`);
+    },
+    onError: (err: any) => {
+      const msg = err?.message || "Erro na análise";
+      if (msg.includes("429")) toast.error("Limite de uso atingido. Tente novamente em instantes.");
+      else if (msg.includes("402")) toast.error("Créditos de IA esgotados. Adicione créditos no workspace.");
+      else toast.error(msg);
+    },
+  });
+
+  const analyzeTextMutation = useMutation({
+    mutationFn: async () => {
+      if (!aiText.trim()) throw new Error("Cole o texto com os perfumes");
+      const { data, error } = await supabase.functions.invoke("parse-invoice-text", {
+        body: { text: aiText },
+      });
+      if (error) throw error;
+      const items = (data?.items || []) as Array<{
+        name?: string;
+        brand?: string | null;
+        total_ml?: number | null;
+        total_cost?: number | null;
+      }>;
+      const newDrafts: DraftItem[] = items.map((it) => {
+        const cost = it.total_cost ?? 0;
+        return {
+          selected: true,
+          name: it.name || "",
+          brand: it.brand || "",
+          total_ml: it.total_ml ? String(it.total_ml) : "",
+          total_cost: cost ? cost.toFixed(2) : "",
+          total_sale: cost ? (cost + FIXED_PROFIT).toFixed(2) : "",
         };
       });
       setDrafts(newDrafts);
@@ -172,7 +238,21 @@ export default function ProductForm() {
   });
 
   const updateDraft = (idx: number, patch: Partial<DraftItem>) => {
-    setDrafts((prev) => prev.map((d, i) => (i === idx ? { ...d, ...patch } : d)));
+    setDrafts((prev) =>
+      prev.map((d, i) => {
+        if (i !== idx) return d;
+        const next = { ...d, ...patch };
+        // se mexeu no custo e o usuário ainda não editou a venda → recalcula
+        if (patch.total_cost !== undefined && !next.saleTouched) {
+          const c = parseFloat(next.total_cost);
+          next.total_sale = !isNaN(c) && c >= 0 ? (c + FIXED_PROFIT).toFixed(2) : "";
+        }
+        if (patch.total_sale !== undefined) {
+          next.saleTouched = true;
+        }
+        return next;
+      }),
+    );
   };
   const removeDraft = (idx: number) => {
     setDrafts((prev) => prev.filter((_, i) => i !== idx));
@@ -202,7 +282,7 @@ export default function ProductForm() {
       const { data: insertedRows, error } = await supabase
         .from("products")
         .insert(rows)
-        .select("id, total_ml");
+        .select("id, total_ml, name, brand");
       if (error) throw error;
       if (insertedRows) {
         await Promise.all(
@@ -217,12 +297,16 @@ export default function ProductForm() {
             }),
           ),
         );
+        // dispara busca de imagem em paralelo (sem aguardar)
+        insertedRows.forEach((r: any) => {
+          fetchImageInBackground(r.id, user.id, r.name, r.brand);
+        });
       }
       return rows.length;
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success(`${count} produto(s) cadastrado(s)!`);
+      toast.success(`${count} produto(s) cadastrado(s)! Buscando imagens...`);
       navigate("/products");
     },
     onError: (err: any) => toast.error(err.message),
@@ -275,8 +359,24 @@ export default function ProductForm() {
               <Input type="number" inputMode="decimal" step="0.01" min="0" value={totalCost} onChange={(e) => setTotalCost(e.target.value)} required className="bg-secondary border-border" placeholder="Ex: 350,00" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Preço de Revenda do Frasco (R$) *</label>
-              <Input type="number" inputMode="decimal" step="0.01" min="0" value={totalSalePrice} onChange={(e) => setTotalSalePrice(e.target.value)} required className="bg-secondary border-border" placeholder="Ex: 800,00" />
+              <label className="text-xs text-muted-foreground mb-1 block flex items-center justify-between">
+                <span>Preço de Revenda do Frasco (R$) *</span>
+                <span className="text-[10px] text-primary">Auto: custo + R$ {FIXED_PROFIT}</span>
+              </label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={totalSalePrice}
+                onChange={(e) => {
+                  setSaleTouched(true);
+                  setTotalSalePrice(e.target.value);
+                }}
+                required
+                className="bg-secondary border-border"
+                placeholder="Calculado automaticamente"
+              />
             </div>
 
             {mlNum > 0 && (
@@ -325,35 +425,71 @@ export default function ProductForm() {
           <Card className="glass-card">
             <CardHeader>
               <CardTitle className="text-lg text-foreground flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" /> Cadastro por Foto
+                <Sparkles className="h-5 w-5 text-primary" /> Cadastro com IA
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground">
-                Envie a foto da nota fiscal, lista ou print do pedido. A IA identifica todos os perfumes de uma vez.
-              </p>
-              <label className="flex items-center justify-center gap-2 h-32 rounded-lg border-2 border-dashed border-border cursor-pointer hover:border-primary/50 transition-colors overflow-hidden">
-                {aiPreview ? (
-                  <img src={aiPreview} alt="Preview" className="h-full w-full object-contain" />
-                ) : (
-                  <div className="text-center">
-                    <Upload className="h-7 w-7 text-muted-foreground mx-auto mb-1" />
-                    <span className="text-xs text-muted-foreground">Toque para enviar foto</span>
-                  </div>
-                )}
-                <input type="file" accept="image/*" onChange={handleAiImage} className="hidden" />
-              </label>
-              <Button
-                className="w-full"
-                disabled={!aiImage || analyzeMutation.isPending}
-                onClick={() => analyzeMutation.mutate()}
-              >
-                {analyzeMutation.isPending ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analisando...</>
-                ) : (
-                  <><Sparkles className="h-4 w-4 mr-2" /> Analisar Imagem</>
-                )}
-              </Button>
+              <Tabs defaultValue="photo" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 bg-secondary">
+                  <TabsTrigger value="photo" className="gap-1">
+                    <ImageIcon className="h-3.5 w-3.5" /> Foto
+                  </TabsTrigger>
+                  <TabsTrigger value="text" className="gap-1">
+                    <FileText className="h-3.5 w-3.5" /> Texto
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="photo" className="mt-3 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Envie a foto da nota fiscal, lista ou print do pedido. A IA identifica todos os perfumes de uma vez.
+                  </p>
+                  <label className="flex items-center justify-center gap-2 h-32 rounded-lg border-2 border-dashed border-border cursor-pointer hover:border-primary/50 transition-colors overflow-hidden">
+                    {aiPreview ? (
+                      <img src={aiPreview} alt="Preview" className="h-full w-full object-contain" />
+                    ) : (
+                      <div className="text-center">
+                        <Upload className="h-7 w-7 text-muted-foreground mx-auto mb-1" />
+                        <span className="text-xs text-muted-foreground">Toque para enviar foto</span>
+                      </div>
+                    )}
+                    <input type="file" accept="image/*" onChange={handleAiImage} className="hidden" />
+                  </label>
+                  <Button
+                    className="w-full"
+                    disabled={!aiImage || analyzeMutation.isPending}
+                    onClick={() => analyzeMutation.mutate()}
+                  >
+                    {analyzeMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analisando...</>
+                    ) : (
+                      <><Sparkles className="h-4 w-4 mr-2" /> Analisar Imagem</>
+                    )}
+                  </Button>
+                </TabsContent>
+
+                <TabsContent value="text" className="mt-3 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Cole a lista do pedido, mensagem do WhatsApp ou qualquer texto com os perfumes. A IA organiza tudo.
+                  </p>
+                  <Textarea
+                    value={aiText}
+                    onChange={(e) => setAiText(e.target.value)}
+                    placeholder={"Ex:\n1. Dior Sauvage 100ml - R$ 350\n2. Bleu de Chanel 50ml - R$ 280\n3. Yara 100ml - R$ 180"}
+                    className="bg-secondary border-border min-h-[140px] text-sm"
+                  />
+                  <Button
+                    className="w-full"
+                    disabled={!aiText.trim() || analyzeTextMutation.isPending}
+                    onClick={() => analyzeTextMutation.mutate()}
+                  >
+                    {analyzeTextMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analisando...</>
+                    ) : (
+                      <><Sparkles className="h-4 w-4 mr-2" /> Analisar Texto</>
+                    )}
+                  </Button>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
 
