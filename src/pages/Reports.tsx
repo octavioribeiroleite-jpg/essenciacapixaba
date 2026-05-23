@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Trash2 } from "lucide-react";
+import { BarChart3, Trash2, Pencil, ArrowUp, Settings2, Package } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,7 +18,10 @@ import {
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { logMovement } from "@/lib/stockMovements";
+import { MOVEMENT_LABEL, type MovementType } from "@/lib/stockMovements";
 import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format, subDays, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -28,6 +31,9 @@ export default function Reports() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState<Period>("month");
+  const [editMov, setEditMov] = useState<any | null>(null);
+  const [editMovMl, setEditMovMl] = useState("");
+  const [editMovNote, setEditMovNote] = useState("");
 
   const startDate = period === "week"
     ? subDays(new Date(), 7)
@@ -84,6 +90,98 @@ export default function Reports() {
   const totalMl = sales?.reduce((s, sale) => s + Number(sale.ml_sold), 0) ?? 0;
 
   const recentSales = sales ? [...sales].reverse().slice(0, 20) : [];
+
+  const { data: entries } = useQuery({
+    queryKey: ["report-entries", period],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stock_movements")
+        .select("*, products(name, brand, current_ml, total_ml)")
+        .in("type", ["initial", "restock", "adjustment"])
+        .gte("created_at", startDate.toISOString())
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const deleteMovement = useMutation({
+    mutationFn: async (mov: any) => {
+      if (!user) throw new Error("Não autenticado");
+      const { data: prod, error: pErr } = await supabase
+        .from("products")
+        .select("current_ml, total_ml")
+        .eq("id", mov.product_id)
+        .single();
+      if (pErr) throw pErr;
+      // Revert the ml_change from current stock
+      const reverted = Number(prod.current_ml) - Number(mov.ml_change);
+      const capped = Math.max(0, Math.min(reverted, Number(prod.total_ml)));
+      const { error: uErr } = await supabase
+        .from("products")
+        .update({ current_ml: capped })
+        .eq("id", mov.product_id);
+      if (uErr) throw uErr;
+      const { error: dErr } = await supabase
+        .from("stock_movements")
+        .delete()
+        .eq("id", mov.id);
+      if (dErr) throw dErr;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["report-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["product"] });
+      queryClient.invalidateQueries({ queryKey: ["product-movements"] });
+      toast.success("Entrada excluída e estoque ajustado.");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const updateMovement = useMutation({
+    mutationFn: async () => {
+      if (!editMov) throw new Error("Erro");
+      const newMl = parseFloat(editMovMl);
+      if (isNaN(newMl)) throw new Error("ml inválido");
+      const oldMl = Number(editMov.ml_change);
+      const diff = newMl - oldMl;
+
+      const { data: prod, error: pErr } = await supabase
+        .from("products")
+        .select("current_ml, total_ml")
+        .eq("id", editMov.product_id)
+        .single();
+      if (pErr) throw pErr;
+
+      const newCurrent = Math.max(0, Math.min(Number(prod.current_ml) + diff, Number(prod.total_ml)));
+      const { error: uErr } = await supabase
+        .from("products")
+        .update({ current_ml: newCurrent })
+        .eq("id", editMov.product_id);
+      if (uErr) throw uErr;
+
+      const { error: mErr } = await supabase
+        .from("stock_movements")
+        .update({
+          ml_change: newMl,
+          ml_after: Number(editMov.ml_after) + diff,
+          note: editMovNote.trim() || null,
+        })
+        .eq("id", editMov.id);
+      if (mErr) throw mErr;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["report-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["product"] });
+      queryClient.invalidateQueries({ queryKey: ["product-movements"] });
+      toast.success("Entrada atualizada.");
+      setEditMov(null);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   const deleteSale = useMutation({
     mutationFn: async (sale: any) => {
@@ -269,6 +367,129 @@ export default function Reports() {
           ))}
         </div>
       </div>
+
+      {/* Stock entries history */}
+      <div>
+        <h2 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+          <Package className="h-4 w-4 text-primary" />
+          Entradas de estoque
+        </h2>
+        {(!entries || entries.length === 0) && (
+          <p className="text-xs text-muted-foreground">Nenhuma entrada no período.</p>
+        )}
+        <div className="space-y-2">
+          {entries?.map((m: any) => {
+            const isAdj = m.type === "adjustment";
+            const Icon = isAdj ? Settings2 : ArrowUp;
+            return (
+              <Card key={m.id} className="glass-card">
+                <CardContent className="p-3 flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1 flex items-start gap-2">
+                    <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${isAdj ? "text-muted-foreground" : "text-success"}`} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {m.products?.name || "?"}
+                        <span className="ml-2 text-success font-bold">
+                          +{Number(m.ml_change).toFixed(0)}ml
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {format(new Date(m.created_at), "dd/MM HH:mm", { locale: ptBR })} ·{" "}
+                        {MOVEMENT_LABEL[m.type as MovementType]}
+                        {m.note ? ` · ${m.note}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => {
+                        setEditMov(m);
+                        setEditMovMl(String(m.ml_change));
+                        setEditMovNote(m.note || "");
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir entrada?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {Number(m.ml_change).toFixed(0)}ml de {m.products?.name || "?"} serão
+                            removidos do estoque atual. Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteMovement.mutate(m)}
+                            disabled={deleteMovement.isPending}
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Edit movement dialog */}
+      <Dialog open={!!editMov} onOpenChange={(o) => !o && setEditMov(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Editar entrada</DialogTitle>
+          </DialogHeader>
+          {editMov && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                {editMov.products?.name} · {MOVEMENT_LABEL[editMov.type as MovementType]}
+              </p>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Quantidade (ml)</label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  value={editMovMl}
+                  onChange={(e) => setEditMovMl(e.target.value)}
+                  className="bg-secondary border-border"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  A diferença será aplicada ao estoque atual automaticamente.
+                </p>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Observação</label>
+                <Input
+                  value={editMovNote}
+                  onChange={(e) => setEditMovNote(e.target.value)}
+                  className="bg-secondary border-border"
+                />
+              </div>
+              <Button
+                className="w-full"
+                disabled={updateMovement.isPending}
+                onClick={() => updateMovement.mutate()}
+              >
+                {updateMovement.isPending ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
