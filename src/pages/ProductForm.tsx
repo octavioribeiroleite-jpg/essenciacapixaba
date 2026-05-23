@@ -25,6 +25,28 @@ async function fetchImageInBackground(productId: string, userId: string, name: s
   }
 }
 
+async function findExistingProduct(
+  userId: string,
+  name: string,
+  brand: string | null | undefined,
+) {
+  const targetName = normalizeName(name);
+  const targetBrand = normalizeName(brand);
+  if (!targetName) return null;
+  const { data } = await supabase
+    .from("products")
+    .select("id, name, brand, current_ml")
+    .eq("user_id", userId);
+  if (!data) return null;
+  return (
+    data.find(
+      (p) =>
+        normalizeName(p.name) === targetName &&
+        normalizeName(p.brand) === targetBrand,
+    ) || null
+  );
+}
+
 export default function ProductForm() {
   const { user } = useAuth();
   const navigate = useNavigate();
