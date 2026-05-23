@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { logMovement } from "@/lib/stockMovements";
 import { useState } from "react";
 import { format, subDays, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -86,6 +87,7 @@ export default function Reports() {
 
   const deleteSale = useMutation({
     mutationFn: async (sale: any) => {
+      if (!user) throw new Error("Não autenticado");
       const { data: product, error: pErr } = await supabase
         .from("products")
         .select("current_ml, total_ml")
@@ -104,12 +106,23 @@ export default function Reports() {
 
       const { error: dErr } = await supabase.from("sales").delete().eq("id", sale.id);
       if (dErr) throw dErr;
+
+      await logMovement({
+        userId: user.id,
+        productId: sale.product_id,
+        type: "sale_reversal",
+        mlChange: Number(sale.ml_sold),
+        mlAfter: capped,
+        note: "Venda excluída — ml retornados",
+        saleId: sale.id,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["report-sales"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["sales-month"] });
       queryClient.invalidateQueries({ queryKey: ["product-sales"] });
+      queryClient.invalidateQueries({ queryKey: ["product-movements"] });
       toast.success("Venda excluída e estoque restaurado.");
     },
     onError: (err: any) => toast.error(err.message),
