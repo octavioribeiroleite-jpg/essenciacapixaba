@@ -322,7 +322,7 @@ export default function ProductForm() {
         <TabsList className="grid w-full grid-cols-2 bg-secondary">
           <TabsTrigger value="manual">Manual</TabsTrigger>
           <TabsTrigger value="ai" className="gap-1">
-            <Sparkles className="h-3.5 w-3.5" /> Por Foto (IA)
+            <Sparkles className="h-3.5 w-3.5" /> Por IA
           </TabsTrigger>
         </TabsList>
 
