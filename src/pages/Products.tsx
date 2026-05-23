@@ -2,17 +2,24 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ML_PER_FRASCO, formatFrascos, perFrasco } from "@/lib/frascos";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export default function Products() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const queryClient = useQueryClient();
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0, ok: 0, failed: [] as string[] });
 
   const { data: products } = useQuery({
     queryKey: ["products"],
@@ -33,13 +40,46 @@ export default function Products() {
       (p.brand && p.brand.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const refreshAllPhotos = async () => {
+    if (!products || products.length === 0 || !user) return;
+    setRunning(true);
+    setProgress({ done: 0, total: products.length, ok: 0, failed: [] });
+    for (const p of products) {
+      try {
+        const { data, error } = await supabase.functions.invoke("fetch-perfume-image", {
+          body: { productId: p.id, name: p.name, brand: p.brand, userId: user.id },
+        });
+        if (error || !data?.ok) {
+          setProgress((s) => ({ ...s, done: s.done + 1, failed: [...s.failed, p.name] }));
+        } else {
+          setProgress((s) => ({ ...s, done: s.done + 1, ok: s.ok + 1 }));
+        }
+      } catch {
+        setProgress((s) => ({ ...s, done: s.done + 1, failed: [...s.failed, p.name] }));
+      }
+      await new Promise((r) => setTimeout(r, 400));
+    }
+    await queryClient.invalidateQueries({ queryKey: ["products"] });
+    toast.success("Atualização de fotos concluída");
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-foreground">Produtos</h1>
-        <Button size="sm" onClick={() => navigate("/products/new")}>
-          <Plus className="h-4 w-4 mr-1" /> Novo
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={refreshAllPhotos}
+            disabled={running || !products?.length}
+          >
+            <Sparkles className="h-4 w-4 mr-1" /> Fotos IA
+          </Button>
+          <Button size="sm" onClick={() => navigate("/products/new")}>
+            <Plus className="h-4 w-4 mr-1" /> Novo
+          </Button>
+        </div>
       </div>
 
       <div className="relative">
@@ -117,6 +157,42 @@ export default function Products() {
           </div>
         )}
       </div>
+
+      <Dialog open={running} onOpenChange={(o) => { if (!o && progress.done >= progress.total) setRunning(false); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {progress.done < progress.total ? (
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              ) : (
+                <Sparkles className="h-4 w-4 text-primary" />
+              )}
+              Atualizando fotos
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Progress value={progress.total ? (progress.done / progress.total) * 100 : 0} />
+            <p className="text-sm text-muted-foreground text-center">
+              {progress.done} de {progress.total} • {progress.ok} atualizadas
+            </p>
+            {progress.done >= progress.total && (
+              <>
+                {progress.failed.length > 0 && (
+                  <div className="text-xs text-muted-foreground max-h-32 overflow-y-auto">
+                    <p className="font-medium text-warning mb-1">Não encontradas ({progress.failed.length}):</p>
+                    <ul className="space-y-0.5">
+                      {progress.failed.map((n, i) => <li key={i}>• {n}</li>)}
+                    </ul>
+                  </div>
+                )}
+                <Button size="sm" className="w-full" onClick={() => setRunning(false)}>
+                  Fechar
+                </Button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
