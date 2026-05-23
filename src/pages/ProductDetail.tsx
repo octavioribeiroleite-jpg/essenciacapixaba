@@ -13,6 +13,7 @@ import { useState, useRef } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { logMovement, MOVEMENT_LABEL, type MovementType } from "@/lib/stockMovements";
 
 const QUICK_SIZES = [3, 5, 10, 15];
 
@@ -58,24 +59,40 @@ export default function ProductDetail() {
       const salePrice = ml * Number(product.sale_price_per_ml);
       const costPrice = ml * Number(product.cost_per_ml);
 
-      const { error: saleError } = await supabase.from("sales").insert({
-        user_id: user.id,
-        product_id: product.id,
-        ml_sold: ml,
-        sale_price: salePrice,
-        cost_price: costPrice,
-      });
+      const { data: saleRow, error: saleError } = await supabase
+        .from("sales")
+        .insert({
+          user_id: user.id,
+          product_id: product.id,
+          ml_sold: ml,
+          sale_price: salePrice,
+          cost_price: costPrice,
+        })
+        .select("id")
+        .single();
       if (saleError) throw saleError;
 
+      const newMl = Number(product.current_ml) - ml;
       const { error: updateError } = await supabase
         .from("products")
-        .update({ current_ml: Number(product.current_ml) - ml })
+        .update({ current_ml: newMl })
         .eq("id", product.id);
       if (updateError) throw updateError;
+
+      await logMovement({
+        userId: user.id,
+        productId: product.id,
+        type: "sale",
+        mlChange: -ml,
+        mlAfter: newMl,
+        note: "Venda rápida (decant)",
+        saleId: saleRow?.id,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["product", id] });
       queryClient.invalidateQueries({ queryKey: ["product-sales", id] });
+      queryClient.invalidateQueries({ queryKey: ["product-movements", id] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["sales-month"] });
       toast.success("Venda registrada!");
