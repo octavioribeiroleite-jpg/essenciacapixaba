@@ -24,6 +24,9 @@ export default function ProductDetail() {
   const queryClient = useQueryClient();
   const [qrOpen, setQrOpen] = useState(false);
   const [customMl, setCustomMl] = useState("");
+  const [restockOpen, setRestockOpen] = useState(false);
+  const [restockMl, setRestockMl] = useState("");
+  const [restockNote, setRestockNote] = useState("");
   const qrRef = useRef<HTMLCanvasElement>(null);
 
   const { data: product } = useQuery({
@@ -49,6 +52,53 @@ export default function ProductDetail() {
       return data;
     },
     enabled: !!user && !!id,
+  });
+
+  const { data: movements } = useQuery({
+    queryKey: ["product-movements", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stock_movements")
+        .select("*")
+        .eq("product_id", id!)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && !!id,
+  });
+
+  const restockMutation = useMutation({
+    mutationFn: async () => {
+      if (!product || !user) throw new Error("Erro");
+      const add = parseFloat(restockMl);
+      if (!add || add <= 0) throw new Error("Informe quantos ml adicionar");
+      const newMl = Number(product.current_ml) + add;
+      const { error } = await supabase
+        .from("products")
+        .update({ current_ml: newMl })
+        .eq("id", product.id);
+      if (error) throw error;
+      await logMovement({
+        userId: user.id,
+        productId: product.id,
+        type: "restock",
+        mlChange: add,
+        mlAfter: newMl,
+        note: restockNote.trim() || "Reposição de estoque",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+      queryClient.invalidateQueries({ queryKey: ["product-movements", id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Entrada registrada!");
+      setRestockOpen(false);
+      setRestockMl("");
+      setRestockNote("");
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const sellMutation = useMutation({
