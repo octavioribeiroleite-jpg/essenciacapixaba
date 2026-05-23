@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { ML_PER_FRASCO, formatFrascos } from "@/lib/frascos";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -42,15 +43,10 @@ export default function Dashboard() {
   });
 
   const totalProducts = products?.length ?? 0;
-  const totalMl = products?.reduce((sum, p) => sum + Number(p.current_ml), 0) ?? 0;
   const totalFrascos =
-    products?.reduce((sum, p) => {
-      const total = Number(p.total_ml) || 0;
-      const current = Number(p.current_ml) || 0;
-      if (total <= 0) return sum;
-      return sum + current / total;
-    }, 0) ?? 0;
-  const lowStock = products?.filter((p) => Number(p.current_ml) < 10) ?? [];
+    products?.reduce((sum, p) => sum + Number(p.current_ml) / ML_PER_FRASCO, 0) ?? 0;
+  const lowStock =
+    products?.filter((p) => Number(p.current_ml) < ML_PER_FRASCO * 2) ?? [];
   const monthRevenue = salesThisMonth?.reduce((sum, s) => sum + Number(s.sale_price), 0) ?? 0;
   const monthProfit = salesThisMonth?.reduce((sum, s) => sum + (Number(s.sale_price) - Number(s.cost_price)), 0) ?? 0;
   const recentSales = salesThisMonth?.slice(0, 5) ?? [];
@@ -69,7 +65,7 @@ export default function Dashboard() {
     {
       label: "Estoque",
       value: frascoLabel,
-      sub: `${totalMl.toFixed(0)}ml total`,
+      sub: totalFrascos === 1 ? "frasco" : "frascos",
       icon: Droplets,
       iconBg: "bg-sky-500/10",
       iconColor: "text-sky-400",
@@ -139,7 +135,9 @@ export default function Dashboard() {
                   <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
                   <p className="text-[11px] text-muted-foreground truncate">{p.brand || "Sem marca"}</p>
                 </div>
-                <span className="text-sm font-bold text-warning shrink-0">{Number(p.current_ml).toFixed(0)}ml</span>
+                <span className="text-sm font-bold text-warning shrink-0">
+                  {formatFrascos(p.current_ml)} {Number(p.current_ml) === ML_PER_FRASCO ? "frasco" : "frascos"}
+                </span>
               </button>
             ))}
           </div>
@@ -167,7 +165,7 @@ export default function Dashboard() {
                   <div>
                     <p className="text-sm font-medium text-foreground">{sale.products?.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {format(new Date(sale.created_at), "dd/MM HH:mm", { locale: ptBR })} · -{Number(sale.ml_sold)}ml
+                      {format(new Date(sale.created_at), "dd/MM HH:mm", { locale: ptBR })} · -{formatFrascos(sale.ml_sold)} frasco(s)
                     </p>
                   </div>
                   <p className="text-sm font-bold text-primary">R$ {Number(sale.sale_price).toFixed(2)}</p>

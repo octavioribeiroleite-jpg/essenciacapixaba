@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ArrowLeft, Upload, Sparkles, Trash2, Loader2, Image as ImageIcon, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { logMovement } from "@/lib/stockMovements";
+import { ML_PER_FRASCO, normalizeName } from "@/lib/frascos";
 
 const FIXED_PROFIT = 100; // R$ de lucro por frasco
 
@@ -24,6 +25,28 @@ async function fetchImageInBackground(productId: string, userId: string, name: s
   }
 }
 
+async function findExistingProduct(
+  userId: string,
+  name: string,
+  brand: string | null | undefined,
+) {
+  const targetName = normalizeName(name);
+  const targetBrand = normalizeName(brand);
+  if (!targetName) return null;
+  const { data } = await supabase
+    .from("products")
+    .select("id, name, brand, current_ml")
+    .eq("user_id", userId);
+  if (!data) return null;
+  return (
+    data.find(
+      (p) =>
+        normalizeName(p.name) === targetName &&
+        normalizeName(p.brand) === targetBrand,
+    ) || null
+  );
+}
+
 export default function ProductForm() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -31,7 +54,7 @@ export default function ProductForm() {
 
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
-  const [totalMl, setTotalMl] = useState("");
+  const [qtyFrascos, setQtyFrascos] = useState("1");
   const [totalCost, setTotalCost] = useState("");
   const [totalSalePrice, setTotalSalePrice] = useState("");
   const [saleTouched, setSaleTouched] = useState(false);
@@ -77,18 +100,40 @@ export default function ProductForm() {
         image_url = urlData.publicUrl;
       }
 
-      const ml = parseFloat(totalMl);
+      const qty = Math.max(1, Math.floor(parseFloat(qtyFrascos) || 1));
+      const ml = qty * ML_PER_FRASCO;
       const cost = parseFloat(totalCost) || 0;
       const sale = parseFloat(totalSalePrice) || 0;
-      const costPerMl = ml > 0 ? cost / ml : 0;
-      const salePerMl = ml > 0 ? sale / ml : 0;
+      const costPerMl = cost / ML_PER_FRASCO;
+      const salePerMl = sale / ML_PER_FRASCO;
+
+      // dedup: se já existe produto com nome+marca (normalizado), faz restock
+      const existing = await findExistingProduct(user.id, name, brand);
+      if (existing) {
+        const newCurrent = Number(existing.current_ml) + ml;
+        const { error: uErr } = await supabase
+          .from("products")
+          .update({ current_ml: newCurrent })
+          .eq("id", existing.id);
+        if (uErr) throw uErr;
+        await logMovement({
+          userId: user.id,
+          productId: existing.id,
+          type: "restock",
+          mlChange: ml,
+          mlAfter: newCurrent,
+          note: `+${qty} frasco(s) (duplicata detectada no cadastro)`,
+        });
+        return { merged: true, name: existing.name };
+      }
+
       const { data: inserted, error } = await supabase
         .from("products")
         .insert({
           user_id: user.id,
           name: name.trim(),
           brand: brand.trim() || null,
-          total_ml: ml,
+          total_ml: ML_PER_FRASCO,
           current_ml: ml,
           cost_per_ml: costPerMl,
           sale_price_per_ml: salePerMl,
@@ -104,16 +149,18 @@ export default function ProductForm() {
           type: "initial",
           mlChange: ml,
           mlAfter: ml,
-          note: "Estoque inicial (cadastro)",
+          note: `Estoque inicial: ${qty} frasco(s)`,
         });
         if (!image_url) {
           fetchImageInBackground(inserted.id, user.id, name.trim(), brand.trim() || null);
         }
       }
+      return { merged: false };
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success("Produto cadastrado!");
+      if (res?.merged) toast.success(`Frascos somados ao estoque de "${res.name}"`);
+      else toast.success("Produto cadastrado!");
       navigate("/products");
     },
     onError: (err: any) => {
@@ -121,19 +168,17 @@ export default function ProductForm() {
     },
   });
 
-  const mlNum = parseFloat(totalMl) || 0;
+  const qtyNum = Math.max(1, Math.floor(parseFloat(qtyFrascos) || 1));
   const costNum = parseFloat(totalCost) || 0;
   const saleNum = parseFloat(totalSalePrice) || 0;
-  const costPerMl = mlNum > 0 ? costNum / mlNum : 0;
-  const salePerMl = mlNum > 0 ? saleNum / mlNum : 0;
-  const profitPerMl = salePerMl - costPerMl;
+  const profitPerFrasco = saleNum - costNum;
 
   // ===== AI batch import =====
   type DraftItem = {
     selected: boolean;
     name: string;
     brand: string;
-    total_ml: string;
+    qty_frascos: string;
     total_cost: string;
     total_sale: string;
     saleTouched?: boolean;
@@ -184,7 +229,7 @@ export default function ProductForm() {
           selected: true,
           name: it.name || "",
           brand: it.brand || "",
-          total_ml: it.total_ml ? String(it.total_ml) : "",
+          qty_frascos: "1",
           total_cost: cost ? cost.toFixed(2) : "",
           total_sale: cost ? (cost + FIXED_PROFIT).toFixed(2) : "",
         };
@@ -220,7 +265,7 @@ export default function ProductForm() {
           selected: true,
           name: it.name || "",
           brand: it.brand || "",
-          total_ml: it.total_ml ? String(it.total_ml) : "",
+          qty_frascos: "1",
           total_cost: cost ? cost.toFixed(2) : "",
           total_sale: cost ? (cost + FIXED_PROFIT).toFixed(2) : "",
         };
@@ -263,50 +308,69 @@ export default function ProductForm() {
       if (!user) throw new Error("Não autenticado");
       const valid = drafts.filter((d) => d.selected);
       if (!valid.length) throw new Error("Selecione ao menos um produto");
-      const rows = valid.map((d) => {
-        const ml = parseFloat(d.total_ml) || 0;
+      let created = 0;
+      let merged = 0;
+      for (const d of valid) {
+        if (!d.name.trim()) throw new Error("Cada item precisa de um nome");
+        const qty = Math.max(1, Math.floor(parseFloat(d.qty_frascos) || 1));
+        const ml = qty * ML_PER_FRASCO;
         const cost = parseFloat(d.total_cost) || 0;
         const sale = parseFloat(d.total_sale) || 0;
-        if (!d.name.trim()) throw new Error("Cada item precisa de um nome");
-        if (ml <= 0) throw new Error(`"${d.name}" precisa de ML do frasco`);
-        return {
-          user_id: user.id,
-          name: d.name.trim(),
-          brand: d.brand.trim() || null,
-          total_ml: ml,
-          current_ml: ml,
-          cost_per_ml: cost / ml,
-          sale_price_per_ml: sale / ml,
-        };
-      });
-      const { data: insertedRows, error } = await supabase
-        .from("products")
-        .insert(rows)
-        .select("id, total_ml, name, brand");
-      if (error) throw error;
-      if (insertedRows) {
-        await Promise.all(
-          insertedRows.map((r: any) =>
-            logMovement({
+
+        const existing = await findExistingProduct(user.id, d.name, d.brand);
+        if (existing) {
+          const newCurrent = Number(existing.current_ml) + ml;
+          const { error: uErr } = await supabase
+            .from("products")
+            .update({ current_ml: newCurrent })
+            .eq("id", existing.id);
+          if (uErr) throw uErr;
+          await logMovement({
+            userId: user.id,
+            productId: existing.id,
+            type: "restock",
+            mlChange: ml,
+            mlAfter: newCurrent,
+            note: `+${qty} frasco(s) (duplicata detectada no cadastro IA)`,
+          });
+          merged++;
+        } else {
+          const { data: ins, error } = await supabase
+            .from("products")
+            .insert({
+              user_id: user.id,
+              name: d.name.trim(),
+              brand: d.brand.trim() || null,
+              total_ml: ML_PER_FRASCO,
+              current_ml: ml,
+              cost_per_ml: cost / ML_PER_FRASCO,
+              sale_price_per_ml: sale / ML_PER_FRASCO,
+            })
+            .select("id, name, brand")
+            .single();
+          if (error) throw error;
+          if (ins) {
+            await logMovement({
               userId: user.id,
-              productId: r.id,
+              productId: ins.id,
               type: "initial",
-              mlChange: Number(r.total_ml),
-              mlAfter: Number(r.total_ml),
-              note: "Estoque inicial (cadastro)",
-            }),
-          ),
-        );
-        // dispara busca de imagem em paralelo (sem aguardar)
-        insertedRows.forEach((r: any) => {
-          fetchImageInBackground(r.id, user.id, r.name, r.brand);
-        });
+              mlChange: ml,
+              mlAfter: ml,
+              note: `Estoque inicial: ${qty} frasco(s)`,
+            });
+            fetchImageInBackground(ins.id, user.id, ins.name, ins.brand);
+          }
+          created++;
+        }
       }
-      return rows.length;
+      return { created, merged };
     },
-    onSuccess: (count) => {
+    onSuccess: ({ created, merged }) => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success(`${count} produto(s) cadastrado(s)! Buscando imagens...`);
+      const parts: string[] = [];
+      if (created) parts.push(`${created} novo(s)`);
+      if (merged) parts.push(`${merged} somado(s) ao estoque`);
+      toast.success(parts.join(" · ") || "Concluído");
       navigate("/products");
     },
     onError: (err: any) => toast.error(err.message),
@@ -348,10 +412,10 @@ export default function ProductForm() {
               <Input value={brand} onChange={(e) => setBrand(e.target.value)} className="bg-secondary border-border" placeholder="Ex: Dior" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Tamanho do Frasco (ml) *</label>
-              <Input type="number" inputMode="decimal" step="0.1" min="0" value={totalMl} onChange={(e) => setTotalMl(e.target.value)} required className="bg-secondary border-border" placeholder="Ex: 100ml = 1 frasco" />
+              <label className="text-xs text-muted-foreground mb-1 block">Quantidade de Frascos *</label>
+              <Input type="number" inputMode="numeric" step="1" min="1" value={qtyFrascos} onChange={(e) => setQtyFrascos(e.target.value)} required className="bg-secondary border-border" placeholder="1" />
               <p className="text-[10px] text-muted-foreground mt-1">
-                Cada cadastro = 1 frasco. Informe quantos ml ele tem (pode ser menor, ex: 50ml).
+                Padrão: 1 frasco = 100 ml. Se já existir esse perfume, soma ao estoque atual.
               </p>
             </div>
             <div>
@@ -379,20 +443,20 @@ export default function ProductForm() {
               />
             </div>
 
-            {mlNum > 0 && (
+            {(costNum > 0 || saleNum > 0) && (
               <div className="rounded-lg bg-secondary/60 border border-border p-3 space-y-1.5">
                 <p className="text-xs text-muted-foreground mb-1">Cálculo automático</p>
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Custo por ml</span>
-                  <span className="font-medium text-foreground">R$ {costPerMl.toFixed(2)}</span>
+                  <span className="text-muted-foreground">Custo do frasco</span>
+                  <span className="font-medium text-foreground">R$ {costNum.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Venda por ml</span>
-                  <span className="font-medium text-primary">R$ {salePerMl.toFixed(2)}</span>
+                  <span className="text-muted-foreground">Venda do frasco</span>
+                  <span className="font-medium text-primary">R$ {saleNum.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xs pt-1 border-t border-border">
-                  <span className="text-muted-foreground">Lucro por ml</span>
-                  <span className="font-bold text-success">R$ {profitPerMl.toFixed(2)}</span>
+                  <span className="text-muted-foreground">Lucro por frasco · Total ({qtyNum})</span>
+                  <span className="font-bold text-success">R$ {profitPerFrasco.toFixed(2)} · R$ {(profitPerFrasco * qtyNum).toFixed(2)}</span>
                 </div>
               </div>
             )}
@@ -502,10 +566,10 @@ export default function ProductForm() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {drafts.map((d, i) => {
-                  const ml = parseFloat(d.total_ml) || 0;
+                  const qty = Math.max(1, Math.floor(parseFloat(d.qty_frascos) || 1));
                   const cost = parseFloat(d.total_cost) || 0;
                   const sale = parseFloat(d.total_sale) || 0;
-                  const profitMl = ml > 0 ? (sale - cost) / ml : 0;
+                  const profitFrasco = sale - cost;
                   return (
                     <div
                       key={i}
@@ -536,12 +600,14 @@ export default function ProductForm() {
                       />
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <label className="text-[10px] text-muted-foreground block mb-0.5">ML</label>
+                          <label className="text-[10px] text-muted-foreground block mb-0.5">Frascos</label>
                           <Input
                             type="number"
-                            inputMode="decimal"
-                            value={d.total_ml}
-                            onChange={(e) => updateDraft(i, { total_ml: e.target.value })}
+                            inputMode="numeric"
+                            min="1"
+                            step="1"
+                            value={d.qty_frascos}
+                            onChange={(e) => updateDraft(i, { qty_frascos: e.target.value })}
                             className="bg-secondary border-border h-8 text-xs"
                           />
                         </div>
@@ -566,11 +632,11 @@ export default function ProductForm() {
                           />
                         </div>
                       </div>
-                      {ml > 0 && (
+                      {(cost > 0 || sale > 0) && (
                         <div className="text-[10px] text-muted-foreground flex justify-between">
-                          <span>Custo/ml: R$ {(cost / ml).toFixed(2)}</span>
-                          <span>Venda/ml: R$ {(sale / ml).toFixed(2)}</span>
-                          <span className="text-success font-medium">Lucro/ml: R$ {profitMl.toFixed(2)}</span>
+                          <span>{qty} frasco(s)</span>
+                          <span>Total custo: R$ {(cost * qty).toFixed(2)}</span>
+                          <span className="text-success font-medium">Lucro/frasco: R$ {profitFrasco.toFixed(2)}</span>
                         </div>
                       )}
                     </div>
