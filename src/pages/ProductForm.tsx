@@ -393,10 +393,10 @@ export default function ProductForm() {
               <Input value={brand} onChange={(e) => setBrand(e.target.value)} className="bg-secondary border-border" placeholder="Ex: Dior" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Tamanho do Frasco (ml) *</label>
-              <Input type="number" inputMode="decimal" step="0.1" min="0" value={totalMl} onChange={(e) => setTotalMl(e.target.value)} required className="bg-secondary border-border" placeholder="Ex: 100ml = 1 frasco" />
+              <label className="text-xs text-muted-foreground mb-1 block">Quantidade de Frascos *</label>
+              <Input type="number" inputMode="numeric" step="1" min="1" value={qtyFrascos} onChange={(e) => setQtyFrascos(e.target.value)} required className="bg-secondary border-border" placeholder="1" />
               <p className="text-[10px] text-muted-foreground mt-1">
-                Cada cadastro = 1 frasco. Informe quantos ml ele tem (pode ser menor, ex: 50ml).
+                Padrão: 1 frasco = 100 ml. Se já existir esse perfume, soma ao estoque atual.
               </p>
             </div>
             <div>
@@ -424,20 +424,20 @@ export default function ProductForm() {
               />
             </div>
 
-            {mlNum > 0 && (
+            {(costNum > 0 || saleNum > 0) && (
               <div className="rounded-lg bg-secondary/60 border border-border p-3 space-y-1.5">
                 <p className="text-xs text-muted-foreground mb-1">Cálculo automático</p>
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Custo por ml</span>
-                  <span className="font-medium text-foreground">R$ {costPerMl.toFixed(2)}</span>
+                  <span className="text-muted-foreground">Custo do frasco</span>
+                  <span className="font-medium text-foreground">R$ {costNum.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Venda por ml</span>
-                  <span className="font-medium text-primary">R$ {salePerMl.toFixed(2)}</span>
+                  <span className="text-muted-foreground">Venda do frasco</span>
+                  <span className="font-medium text-primary">R$ {saleNum.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xs pt-1 border-t border-border">
-                  <span className="text-muted-foreground">Lucro por ml</span>
-                  <span className="font-bold text-success">R$ {profitPerMl.toFixed(2)}</span>
+                  <span className="text-muted-foreground">Lucro por frasco · Total ({qtyNum})</span>
+                  <span className="font-bold text-success">R$ {profitPerFrasco.toFixed(2)} · R$ {(profitPerFrasco * qtyNum).toFixed(2)}</span>
                 </div>
               </div>
             )}
