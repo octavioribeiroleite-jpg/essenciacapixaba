@@ -229,7 +229,7 @@ export default function ProductForm() {
           selected: true,
           name: it.name || "",
           brand: it.brand || "",
-          total_ml: it.total_ml ? String(it.total_ml) : "",
+          qty_frascos: "1",
           total_cost: cost ? cost.toFixed(2) : "",
           total_sale: cost ? (cost + FIXED_PROFIT).toFixed(2) : "",
         };
@@ -265,7 +265,7 @@ export default function ProductForm() {
           selected: true,
           name: it.name || "",
           brand: it.brand || "",
-          total_ml: it.total_ml ? String(it.total_ml) : "",
+          qty_frascos: "1",
           total_cost: cost ? cost.toFixed(2) : "",
           total_sale: cost ? (cost + FIXED_PROFIT).toFixed(2) : "",
         };
@@ -308,50 +308,69 @@ export default function ProductForm() {
       if (!user) throw new Error("Não autenticado");
       const valid = drafts.filter((d) => d.selected);
       if (!valid.length) throw new Error("Selecione ao menos um produto");
-      const rows = valid.map((d) => {
-        const ml = parseFloat(d.total_ml) || 0;
+      let created = 0;
+      let merged = 0;
+      for (const d of valid) {
+        if (!d.name.trim()) throw new Error("Cada item precisa de um nome");
+        const qty = Math.max(1, Math.floor(parseFloat(d.qty_frascos) || 1));
+        const ml = qty * ML_PER_FRASCO;
         const cost = parseFloat(d.total_cost) || 0;
         const sale = parseFloat(d.total_sale) || 0;
-        if (!d.name.trim()) throw new Error("Cada item precisa de um nome");
-        if (ml <= 0) throw new Error(`"${d.name}" precisa de ML do frasco`);
-        return {
-          user_id: user.id,
-          name: d.name.trim(),
-          brand: d.brand.trim() || null,
-          total_ml: ml,
-          current_ml: ml,
-          cost_per_ml: cost / ml,
-          sale_price_per_ml: sale / ml,
-        };
-      });
-      const { data: insertedRows, error } = await supabase
-        .from("products")
-        .insert(rows)
-        .select("id, total_ml, name, brand");
-      if (error) throw error;
-      if (insertedRows) {
-        await Promise.all(
-          insertedRows.map((r: any) =>
-            logMovement({
+
+        const existing = await findExistingProduct(user.id, d.name, d.brand);
+        if (existing) {
+          const newCurrent = Number(existing.current_ml) + ml;
+          const { error: uErr } = await supabase
+            .from("products")
+            .update({ current_ml: newCurrent })
+            .eq("id", existing.id);
+          if (uErr) throw uErr;
+          await logMovement({
+            userId: user.id,
+            productId: existing.id,
+            type: "restock",
+            mlChange: ml,
+            mlAfter: newCurrent,
+            note: `+${qty} frasco(s) (duplicata detectada no cadastro IA)`,
+          });
+          merged++;
+        } else {
+          const { data: ins, error } = await supabase
+            .from("products")
+            .insert({
+              user_id: user.id,
+              name: d.name.trim(),
+              brand: d.brand.trim() || null,
+              total_ml: ML_PER_FRASCO,
+              current_ml: ml,
+              cost_per_ml: cost / ML_PER_FRASCO,
+              sale_price_per_ml: sale / ML_PER_FRASCO,
+            })
+            .select("id, name, brand")
+            .single();
+          if (error) throw error;
+          if (ins) {
+            await logMovement({
               userId: user.id,
-              productId: r.id,
+              productId: ins.id,
               type: "initial",
-              mlChange: Number(r.total_ml),
-              mlAfter: Number(r.total_ml),
-              note: "Estoque inicial (cadastro)",
-            }),
-          ),
-        );
-        // dispara busca de imagem em paralelo (sem aguardar)
-        insertedRows.forEach((r: any) => {
-          fetchImageInBackground(r.id, user.id, r.name, r.brand);
-        });
+              mlChange: ml,
+              mlAfter: ml,
+              note: `Estoque inicial: ${qty} frasco(s)`,
+            });
+            fetchImageInBackground(ins.id, user.id, ins.name, ins.brand);
+          }
+          created++;
+        }
       }
-      return rows.length;
+      return { created, merged };
     },
-    onSuccess: (count) => {
+    onSuccess: ({ created, merged }) => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success(`${count} produto(s) cadastrado(s)! Buscando imagens...`);
+      const parts: string[] = [];
+      if (created) parts.push(`${created} novo(s)`);
+      if (merged) parts.push(`${merged} somado(s) ao estoque`);
+      toast.success(parts.join(" · ") || "Concluído");
       navigate("/products");
     },
     onError: (err: any) => toast.error(err.message),
