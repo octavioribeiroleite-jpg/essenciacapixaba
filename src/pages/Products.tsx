@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { ML_PER_FRASCO, formatFrascos, perFrasco } from "@/lib/frascos";
 
 export default function Products() {
   const { user } = useAuth();
@@ -54,9 +55,10 @@ export default function Products() {
       <div className="space-y-2 fade-in">
         {filtered?.map((product) => {
           const current = Number(product.current_ml);
-          const total = Number(product.total_ml) || 1;
-          const pct = Math.max(0, Math.min(100, (current / total) * 100));
-          const isLow = current < 10;
+          const frascos = current / ML_PER_FRASCO;
+          const isLow = frascos < 2;
+          // barra: cheia se >= 5 frascos
+          const pct = Math.max(0, Math.min(100, (frascos / 5) * 100));
           return (
             <button
               key={product.id}
@@ -94,16 +96,16 @@ export default function Products() {
                     "text-[11px] font-medium shrink-0",
                     isLow ? "text-warning" : "text-muted-foreground",
                   )}>
-                    {current.toFixed(0)}ml
+                    {formatFrascos(current)} {frascos === 1 ? "frasco" : "frascos"}
                   </span>
                 </div>
               </div>
 
               <div className="text-right shrink-0">
                 <p className="text-sm font-bold text-primary">
-                  R$ {Number(product.sale_price_per_ml).toFixed(2)}
+                  R$ {perFrasco(product.sale_price_per_ml).toFixed(2)}
                 </p>
-                <p className="text-[10px] text-muted-foreground">/ml</p>
+                <p className="text-[10px] text-muted-foreground">/frasco</p>
               </div>
             </button>
           );
