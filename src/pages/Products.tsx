@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -52,45 +51,68 @@ export default function Products() {
         />
       </div>
 
-      <div className="space-y-2">
-        {filtered?.map((product) => (
-          <Card
-            key={product.id}
-            className="glass-card cursor-pointer hover:border-primary/30 transition-colors"
-            onClick={() => navigate(`/products/${product.id}`)}
-          >
-            <CardContent className="p-3 flex items-center gap-3">
+      <div className="space-y-2 fade-in">
+        {filtered?.map((product) => {
+          const current = Number(product.current_ml);
+          const total = Number(product.total_ml) || 1;
+          const pct = Math.max(0, Math.min(100, (current / total) * 100));
+          const isLow = current < 10;
+          return (
+            <button
+              key={product.id}
+              onClick={() => navigate(`/products/${product.id}`)}
+              className="w-full flex items-center gap-3 bg-card border border-border/60 hover:border-primary/50 rounded-2xl p-3 transition-colors text-left"
+            >
               {product.image_url ? (
                 <img
                   src={product.image_url}
                   alt={product.name}
-                  className="h-12 w-12 rounded-lg object-cover"
+                  className="h-14 w-14 rounded-xl object-cover shrink-0"
                 />
               ) : (
-                <div className="h-12 w-12 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground text-lg">
-                  🧴
+                <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shrink-0">
+                  <span className="text-lg font-bold text-primary">
+                    {product.name.charAt(0).toUpperCase()}
+                  </span>
                 </div>
               )}
+
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{product.name}</p>
-                <p className="text-xs text-muted-foreground">{product.brand || "Sem marca"}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{product.brand || "Sem marca"}</p>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full transition-all",
+                        isLow ? "bg-warning" : "bg-primary",
+                      )}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className={cn(
+                    "text-[11px] font-medium shrink-0",
+                    isLow ? "text-warning" : "text-muted-foreground",
+                  )}>
+                    {current.toFixed(0)}ml
+                  </span>
+                </div>
               </div>
-              <div className="text-right">
-                <p className={cn(
-                  "text-sm font-bold",
-                  Number(product.current_ml) < 10 ? "text-warning" : "text-foreground"
-                )}>
-                  {Number(product.current_ml).toFixed(0)}ml
+
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold text-primary">
+                  R$ {Number(product.sale_price_per_ml).toFixed(2)}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  R$ {Number(product.sale_price_per_ml).toFixed(2)}/ml
-                </p>
+                <p className="text-[10px] text-muted-foreground">/ml</p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+            </button>
+          );
+        })}
         {filtered?.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground py-8">Nenhum produto encontrado.</p>
+          <div className="text-center py-10">
+            <div className="text-3xl mb-2">🔍</div>
+            <p className="text-sm text-muted-foreground">Nenhum produto encontrado.</p>
+          </div>
         )}
       </div>
     </div>
