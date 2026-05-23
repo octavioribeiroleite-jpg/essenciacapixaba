@@ -14,8 +14,9 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { logMovement, MOVEMENT_LABEL, type MovementType } from "@/lib/stockMovements";
+import { ML_PER_FRASCO, formatFrascos, perFrasco } from "@/lib/frascos";
 
-const QUICK_SIZES = [3, 5, 10, 15];
+const QUICK_QTYS = [1, 2, 3, 5];
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +36,8 @@ export default function ProductDetail() {
   const [editTotalSale, setEditTotalSale] = useState("");
   const [editImage, setEditImage] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
   const qrRef = useRef<HTMLCanvasElement>(null);
 
   const { data: product } = useQuery({
@@ -80,8 +83,9 @@ export default function ProductDetail() {
   const restockMutation = useMutation({
     mutationFn: async () => {
       if (!product || !user) throw new Error("Erro");
-      const add = parseFloat(restockMl);
-      if (!add || add <= 0) throw new Error("Informe quantos ml adicionar");
+      const qty = Math.max(1, Math.floor(parseFloat(restockMl) || 0));
+      if (!qty) throw new Error("Informe quantos frascos adicionar");
+      const add = qty * ML_PER_FRASCO;
       const newMl = Number(product.current_ml) + add;
       const { error } = await supabase
         .from("products")
@@ -94,7 +98,7 @@ export default function ProductDetail() {
         type: "restock",
         mlChange: add,
         mlAfter: newMl,
-        note: restockNote.trim() || "Reposição de estoque",
+        note: restockNote.trim() || `Reposição: ${qty} frasco(s)`,
       });
     },
     onSuccess: () => {
@@ -110,8 +114,9 @@ export default function ProductDetail() {
   });
 
   const sellMutation = useMutation({
-    mutationFn: async (ml: number) => {
+    mutationFn: async (qty: number) => {
       if (!product || !user) throw new Error("Erro");
+      const ml = qty * ML_PER_FRASCO;
       if (ml > Number(product.current_ml)) throw new Error("Estoque insuficiente!");
 
       const salePrice = ml * Number(product.sale_price_per_ml);
@@ -143,7 +148,7 @@ export default function ProductDetail() {
         type: "sale",
         mlChange: -ml,
         mlAfter: newMl,
-        note: "Venda rápida (decant)",
+        note: `Venda rápida: ${qty} frasco(s)`,
         saleId: saleRow?.id,
       });
     },
@@ -175,13 +180,54 @@ export default function ProductDetail() {
     if (!product) return;
     setEditName(product.name);
     setEditBrand(product.brand || "");
-    setEditTotalMl(String(product.total_ml));
-    setEditTotalCost((Number(product.cost_per_ml) * Number(product.total_ml)).toFixed(2));
-    setEditTotalSale((Number(product.sale_price_per_ml) * Number(product.total_ml)).toFixed(2));
+    setEditTotalMl(String(ML_PER_FRASCO));
+    setEditTotalCost(perFrasco(product.cost_per_ml).toFixed(2));
+    setEditTotalSale(perFrasco(product.sale_price_per_ml).toFixed(2));
     setEditImage(null);
     setEditImagePreview(null);
     setEditOpen(true);
   };
+
+  const aiImageMutation = useMutation({
+    mutationFn: async () => {
+      if (!product || !user) throw new Error("Erro");
+      const { data, error } = await supabase.functions.invoke("fetch-perfume-image", {
+        body: { productId: product.id, userId: user.id, name: product.name, brand: product.brand },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error("Imagem não encontrada");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Foto atualizada pela IA!");
+      setPhotoOpen(false);
+    },
+    onError: (err: any) => toast.error(err.message || "IA não achou foto, envie manualmente"),
+  });
+
+  const uploadPhotoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!product || !user) throw new Error("Erro");
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("product-images").upload(path, file);
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
+      const { error } = await supabase
+        .from("products")
+        .update({ image_url: urlData.publicUrl })
+        .eq("id", product.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Foto atualizada!");
+      setPhotoOpen(false);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   const editMutation = useMutation({
     mutationFn: async () => {
