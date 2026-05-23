@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, QrCode, Download, Trash2 } from "lucide-react";
+import { ArrowLeft, QrCode, Download, Trash2, Plus, ArrowUp, ArrowDown, Settings2, History } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
@@ -248,6 +248,9 @@ export default function ProductDetail() {
         <Button variant="outline" className="flex-1" onClick={() => setQrOpen(true)}>
           <QrCode className="h-4 w-4 mr-1" /> Etiqueta Niimbot
         </Button>
+        <Button variant="outline" className="flex-1" onClick={() => setRestockOpen(true)}>
+          <Plus className="h-4 w-4 mr-1" /> Registrar entrada
+        </Button>
         <Button
           variant="destructive"
           size="icon"
@@ -322,6 +325,98 @@ export default function ProductDetail() {
           ))}
         </div>
       </div>
+
+      {/* Stock movements history */}
+      <div>
+        <h2 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+          <History className="h-4 w-4 text-primary" /> Histórico de movimentações
+        </h2>
+        {(!movements || movements.length === 0) && (
+          <p className="text-xs text-muted-foreground">Nenhuma movimentação registrada.</p>
+        )}
+        <div className="space-y-2">
+          {movements?.map((m: any) => {
+            const change = Number(m.ml_change);
+            const isIn = change >= 0;
+            const Icon = m.type === "adjustment" ? Settings2 : isIn ? ArrowUp : ArrowDown;
+            const color = m.type === "adjustment"
+              ? "text-muted-foreground"
+              : isIn
+              ? "text-success"
+              : "text-warning";
+            return (
+              <Card key={m.id} className="glass-card">
+                <CardContent className="p-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon className={cn("h-4 w-4 shrink-0", color)} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        {MOVEMENT_LABEL[m.type as MovementType]}
+                        <span className={cn("ml-2 font-bold", color)}>
+                          {isIn ? "+" : ""}
+                          {change.toFixed(0)}ml
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {format(new Date(m.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        {m.note ? ` · ${m.note}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground shrink-0">
+                    Restou {Number(m.ml_after).toFixed(0)}ml
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Restock Dialog */}
+      <Dialog open={restockOpen} onOpenChange={setRestockOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Registrar entrada</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Use ao reabastecer este perfume (compra de frasco novo, devolução etc).
+              Estoque atual: <span className="text-foreground font-medium">{Number(product.current_ml).toFixed(0)}ml</span>
+            </p>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Quantidade a adicionar (ml) *</label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                min="0.1"
+                value={restockMl}
+                onChange={(e) => setRestockMl(e.target.value)}
+                className="bg-secondary border-border"
+                placeholder="Ex: 100"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Observação</label>
+              <Input
+                value={restockNote}
+                onChange={(e) => setRestockNote(e.target.value)}
+                className="bg-secondary border-border"
+                placeholder="Ex: Frasco novo AliExpress"
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={!restockMl || restockMutation.isPending}
+              onClick={() => restockMutation.mutate()}
+            >
+              {restockMutation.isPending ? "Registrando..." : "Adicionar ao estoque"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* QR Code Dialog */}
       <Dialog open={qrOpen} onOpenChange={setQrOpen}>
