@@ -104,16 +104,17 @@ export default function Sales() {
 
       const costPrice = mlNum * Number(selected.cost_per_ml);
 
-      const { error: saleError } = await supabase.from("sales").insert({
-        user_id: user.id,
-        product_id: selected.id,
-        ml_sold: mlNum,
-        sale_price: priceNum,
-        cost_price: costPrice,
-      }).select("id").single();
-      const saleRow = (saleError as any) ? null : (saleError as any);
-      // re-doing properly:
-      // (handled below)
+      const { data: saleRow, error: saleError } = await supabase
+        .from("sales")
+        .insert({
+          user_id: user.id,
+          product_id: selected.id,
+          ml_sold: mlNum,
+          sale_price: priceNum,
+          cost_price: costPrice,
+        })
+        .select("id")
+        .single();
       if (saleError) throw saleError;
 
       const newMl = Number(selected.current_ml) - mlNum;
@@ -130,6 +131,7 @@ export default function Sales() {
         mlChange: -mlNum,
         mlAfter: newMl,
         note: mode === "frasco" ? "Venda (frasco fechado)" : "Venda (decant)",
+        saleId: saleRow?.id,
       });
     },
     onSuccess: () => {
