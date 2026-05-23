@@ -298,22 +298,30 @@ export default function ProductDetail() {
       <Card className="glass-card">
         <CardContent className="p-4">
           <div className="flex gap-4">
-            {product.image_url ? (
-              <img src={product.image_url} alt={product.name} className="h-20 w-20 rounded-xl object-cover" />
-            ) : (
-              <div className="h-20 w-20 rounded-xl bg-secondary flex items-center justify-center text-3xl">🧴</div>
-            )}
+            <button
+              onClick={() => setPhotoOpen(true)}
+              className="h-20 w-20 rounded-xl overflow-hidden border border-border/60 hover:border-primary transition-colors relative group shrink-0"
+              title="Trocar foto"
+            >
+              {product.image_url ? (
+                <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full bg-secondary flex items-center justify-center text-3xl">🧴</div>
+              )}
+              <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <Pencil className="h-4 w-4 text-white" />
+              </span>
+            </button>
             <div className="flex-1">
               <h1 className="text-lg font-bold text-foreground">{product.name}</h1>
               <p className="text-sm text-muted-foreground">{product.brand || "Sem marca"}</p>
               <div className="mt-2 flex items-center gap-3">
                 <span className={cn(
                   "text-lg font-bold",
-                  Number(product.current_ml) < 10 ? "text-warning" : "text-primary"
+                  Number(product.current_ml) < ML_PER_FRASCO * 2 ? "text-warning" : "text-primary"
                 )}>
-                  {Number(product.current_ml).toFixed(0)}ml
+                  {formatFrascos(product.current_ml)} {Number(product.current_ml) === ML_PER_FRASCO ? "frasco" : "frascos"}
                 </span>
-                <span className="text-xs text-muted-foreground">/ {Number(product.total_ml)}ml</span>
               </div>
             </div>
           </div>
@@ -322,30 +330,20 @@ export default function ProductDetail() {
               <div className="bg-secondary rounded-lg p-2">
                 <span className="text-muted-foreground">Pago no frasco</span>
                 <p className="font-medium text-foreground">
-                  R$ {(Number(product.cost_per_ml) * Number(product.total_ml)).toFixed(2)}
+                  R$ {perFrasco(product.cost_per_ml).toFixed(2)}
                 </p>
               </div>
               <div className="bg-secondary rounded-lg p-2">
                 <span className="text-muted-foreground">Revenda do frasco</span>
                 <p className="font-medium text-primary">
-                  R$ {(Number(product.sale_price_per_ml) * Number(product.total_ml)).toFixed(2)}
+                  R$ {perFrasco(product.sale_price_per_ml).toFixed(2)}
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-secondary rounded-lg p-2">
-                <span className="text-muted-foreground">Custo/ml</span>
-                <p className="font-medium text-foreground">R$ {Number(product.cost_per_ml).toFixed(2)}</p>
-              </div>
-              <div className="bg-secondary rounded-lg p-2">
-                <span className="text-muted-foreground">Venda/ml</span>
-                <p className="font-medium text-primary">R$ {Number(product.sale_price_per_ml).toFixed(2)}</p>
-              </div>
-            </div>
             <div className="bg-secondary rounded-lg p-2 flex justify-between items-center">
-              <span className="text-muted-foreground">Lucro/ml</span>
+              <span className="text-muted-foreground">Lucro por frasco</span>
               <span className="font-bold text-success">
-                R$ {(Number(product.sale_price_per_ml) - Number(product.cost_per_ml)).toFixed(2)}
+                R$ {(perFrasco(product.sale_price_per_ml) - perFrasco(product.cost_per_ml)).toFixed(2)}
               </span>
             </div>
           </div>
@@ -378,36 +376,21 @@ export default function ProductDetail() {
       <Card className="glass-card">
         <CardContent className="p-4">
           <h2 className="text-sm font-medium text-foreground mb-3">Venda Rápida</h2>
-          <div className="grid grid-cols-4 gap-2 mb-3">
-            {QUICK_SIZES.map((ml) => (
-              <Button
-                key={ml}
-                variant="secondary"
-                className="text-sm font-bold"
-                disabled={sellMutation.isPending || ml > Number(product.current_ml)}
-                onClick={() => sellMutation.mutate(ml)}
-              >
-                -{ml}ml
-              </Button>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Input
-              type="number"
-              step="0.1"
-              min="0.1"
-              max={Number(product.current_ml)}
-              placeholder="ML personalizado"
-              value={customMl}
-              onChange={(e) => setCustomMl(e.target.value)}
-              className="bg-secondary border-border"
-            />
-            <Button
-              disabled={!customMl || sellMutation.isPending || parseFloat(customMl) > Number(product.current_ml)}
-              onClick={() => sellMutation.mutate(parseFloat(customMl))}
-            >
-              Vender
-            </Button>
+          <div className="grid grid-cols-4 gap-2">
+            {QUICK_QTYS.map((qty) => {
+              const maxQty = Math.floor(Number(product.current_ml) / ML_PER_FRASCO);
+              return (
+                <Button
+                  key={qty}
+                  variant="secondary"
+                  className="text-sm font-bold"
+                  disabled={sellMutation.isPending || qty > maxQty}
+                  onClick={() => sellMutation.mutate(qty)}
+                >
+                  -{qty} {qty === 1 ? "frasco" : "frascos"}
+                </Button>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
