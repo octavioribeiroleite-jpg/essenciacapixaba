@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Search, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { logMovement } from "@/lib/stockMovements";
 
 const QUICK_SIZES = [3, 5, 10, 15];
 
@@ -109,14 +110,27 @@ export default function Sales() {
         ml_sold: mlNum,
         sale_price: priceNum,
         cost_price: costPrice,
-      });
+      }).select("id").single();
+      const saleRow = (saleError as any) ? null : (saleError as any);
+      // re-doing properly:
+      // (handled below)
       if (saleError) throw saleError;
 
+      const newMl = Number(selected.current_ml) - mlNum;
       const { error: updateError } = await supabase
         .from("products")
-        .update({ current_ml: Number(selected.current_ml) - mlNum })
+        .update({ current_ml: newMl })
         .eq("id", selected.id);
       if (updateError) throw updateError;
+
+      await logMovement({
+        userId: user.id,
+        productId: selected.id,
+        type: "sale",
+        mlChange: -mlNum,
+        mlAfter: newMl,
+        note: mode === "frasco" ? "Venda (frasco fechado)" : "Venda (decant)",
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
