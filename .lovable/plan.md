@@ -1,52 +1,63 @@
 ## O que vai mudar
 
-### 1. Preço de venda automático = Custo + R$ 100
+### 1. Tudo passa a ser por **frasco** (100 ml fixo)
 
-No formulário **manual** e nos **rascunhos da IA**, o campo "Preço de revenda" deixa de ser obrigatório e passa a ser **calculado automaticamente** como `custo do frasco + R$ 100`.
+A unidade do app deixa de ser "ml" e passa a ser "frasco". Para evitar reconstruir todo o banco, mantemos a coluna `current_ml` por baixo, mas **1 frasco = 100 ml** em todo lugar.
 
-- O campo continua editável (caso queira ajustar pontualmente), mas vem pré-preenchido.
-- Bloco "Cálculo automático" mostra: custo/ml, venda/ml, **lucro do frasco = R$ 100**, lucro/ml.
-- Vale igual no fluxo manual e no fluxo de IA (imagem e texto).
+**Exibição em todas as telas (Dashboard, Produtos, Detalhe, Vendas, Relatórios):**
+- `current_ml / 100` → "X frascos"
+- `total_ml` deixa de aparecer (sempre 100)
+- Estoque baixo: <2 frascos (em vez de <10ml)
+- Custo/venda/lucro: por frasco (atual valor × 100)
 
-### 2. Importação por TEXTO (colar lista)
+**Cadastro:**
+- Some o campo "Tamanho do frasco (ml)" — sempre 100 ml.
+- Aparece "Quantidade de frascos" (default 1). No salvar: `total_ml = 100`, `current_ml = qtd × 100`.
+- Custo e venda continuam por frasco; auto-cálculo `venda = custo + R$ 100` (já existe).
 
-Na tela de cadastro, a aba **"Por Foto (IA)"** vira **"IA (Foto ou Texto)"** com duas sub-abas:
+**Vendas:**
+- Tela `Sales.tsx` simplifica: some o modo "Decant" e o input em ml. Aparece só seletor de **quantidade de frascos** (1, 2, 3…), preço auto = qtd × preço do frasco (editável).
+- Ao confirmar: desconta `qtd × 100` de `current_ml`, registra `ml_sold = qtd × 100`.
+- Botões de venda rápida na tela do produto (`-3ml, -5ml…`) viram **"Vender 1 frasco"**.
 
-- **Foto** — fluxo atual (manda imagem pra `parse-invoice`)
-- **Texto** — textarea grande onde você cola lista, pedido, mensagem do WhatsApp, etc. Botão "Analisar texto" chama uma nova edge function `parse-invoice-text` que usa o mesmo modelo Gemini com tool-calling pra extrair os perfumes (nome, marca, ml, custo).
+### 2. Agrupar duplicatas automaticamente
 
-Resultado cai na mesma lista de rascunhos editáveis que já existe hoje — você confere, marca/desmarca e salva tudo de uma vez. O estoque é atualizado igual ao fluxo atual (já registra movimentação `initial`).
+Hoje cada cadastro IA cria produto novo, mesmo com nome igual. Mudança:
 
-### 3. Imagem real do perfume buscada pela IA (automático)
+- No `batchSaveMutation` (cadastro IA, foto e texto) e no manual, antes de inserir:
+  - Busca produtos existentes do usuário com **nome normalizado** igual (lowercase, sem acento, sem espaço extra) — opcional comparar marca também.
+  - Se achar: faz `UPDATE current_ml += qtd × 100` e registra `stock_movement` tipo `restock` com nota "Reposição (cadastro IA detectou duplicata)".
+  - Se não achar: insere normal.
+- Toast informa: "X cadastrados, Y somados ao estoque existente".
 
-Quando um rascunho é confirmado para salvar **e não tem imagem enviada manualmente**, uma nova edge function `fetch-perfume-image` é chamada com `{nome, marca}`:
+### 3. Editar foto do produto com IA ou upload
 
-- Usa Gemini com **web grounding** pra encontrar a URL de uma imagem oficial do frasco.
-- A edge baixa a imagem, redimensiona pra ~600px e faz upload no bucket `product-images` (já existe e é público).
-- O `image_url` do produto é preenchido automaticamente.
+Na tela de detalhe do produto (`ProductDetail.tsx`):
 
-Comportamento ao falhar:
-- Se nenhuma imagem confiável for encontrada, o produto é salvo **sem imagem** (igual hoje) e aparece um toast discreto "Imagem não encontrada para X — você pode adicionar depois".
-- Nada bloqueia o cadastro.
+- A foto do produto vira **clicável**. Abre um modal "Trocar foto" com dois botões:
+  - **Buscar com IA** → chama a edge function `fetch-perfume-image` (já existe) com `{name, brand}`. Mostra preview do resultado; usuário confirma ou cancela.
+  - **Enviar do celular** → input file padrão; faz upload no bucket `product-images` e atualiza `image_url`.
+- Toast de erro se IA não achar imagem ("Não encontrei foto, envie manualmente").
 
-Importante: a busca acontece em background depois do cadastro inicial, então a confirmação é rápida. As imagens aparecem no catálogo assim que cada uma termina (atualização da query `products`).
+### 4. Migração dos dados existentes
 
-## Detalhes técnicos
+SQL único:
+- Para todo produto: `total_ml = 100`; `current_ml = FLOOR(current_ml / 100) × 100` (1 frasco = 100 ml, sobra é descartada).
+- Recalcula `cost_per_ml` e `sale_price_per_ml` dividindo o custo/venda **total do frasco** original por 100 (mantém o preço por frasco igual ao que era o preço total). Fórmula: novos valores = antigos × (total_ml_antigo / 100).
+- Produtos com estoque < 100 ml viram `current_ml = 0` (precisará registrar entrada manual).
 
-**Arquivos alterados:**
-- `src/pages/ProductForm.tsx` — preço de venda auto-calculado (custo + 100), nova sub-aba Texto, dispara busca de imagem após salvar produto sem foto.
-- `supabase/functions/parse-invoice-text/index.ts` — nova edge function, espelha `parse-invoice` mas recebe `{ text: string }` em vez de imagem; mesmo tool-call `register_perfumes`.
-- `supabase/functions/fetch-perfume-image/index.ts` — nova edge function: chama Gemini com web search grounding pra obter URL, baixa imagem, sobe no bucket `product-images`, retorna URL pública.
+Aviso: você verá só o número de frascos depois. Se algum produto tinha 250ml, vai mostrar 2 frascos.
 
-**Regra do preço (Custo + R$ 100):**
-- `total_sale = total_cost + 100`
-- `sale_price_per_ml = (total_cost + 100) / total_ml`
-- Em ambos os fluxos (manual e draft IA), recalcula em tempo real conforme o usuário digita o custo. Campo editável caso queira sobrescrever.
+## Arquivos alterados
 
-**Sem mudanças no banco** — `image_url`, `sale_price_per_ml` e `cost_per_ml` já existem.
+- **Migration SQL** — converte produtos existentes para padrão 100 ml/frasco.
+- `src/pages/Dashboard.tsx`, `src/pages/Products.tsx`, `src/pages/ProductDetail.tsx`, `src/pages/Sales.tsx`, `src/pages/Reports.tsx` — exibição em frascos, botões "Vender 1 frasco", estoque baixo <2 frascos.
+- `src/pages/ProductForm.tsx` — remove campo ml, adiciona "qtd de frascos", lógica de dedup (busca produto com mesmo nome antes de inserir, faz restock se achar).
+- `src/pages/ProductDetail.tsx` — modal "Trocar foto" (IA + upload).
+- `src/lib/stockMovements.ts` — sem mudança de schema, só notas novas.
 
-**Custo de IA:** cada cadastro com IA pode disparar até 2 chamadas extras (parse + busca de imagem). Tudo via Lovable AI Gateway, sem chave nova.
+## Limitações honestas
 
-## Limitações honestas sobre a imagem da internet
-
-Busca de imagem por IA não é 100% confiável — às vezes o modelo retorna uma URL quebrada, uma imagem de outro perfume, ou nenhuma. O plano trata isso como **best-effort**: se vier, ótimo; se não vier, o produto fica sem foto e você pode anexar manualmente depois (a tela de edição do produto já permite). Não vou prometer foto pra 100% dos casos.
+- Dedup por nome normalizado pode juntar erroneamente perfumes com nomes muito parecidos (ex: "Sauvage" vs "Sauvage Elixir"). Comparação inclui marca pra reduzir falsos positivos, mas não é 100%. Se acontecer, dá pra desfazer editando a entrada de estoque.
+- Migração assume que tudo no banco hoje é coerente com "1 frasco = 100 ml". Se você tinha registros pensados como frascos de 50 ml, eles vão virar "0 frascos" (precisa reinserir).
+- IA buscando imagem (`fetch-perfume-image`) continua best-effort — pode trazer foto errada ou nada.
