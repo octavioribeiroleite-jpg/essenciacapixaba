@@ -404,7 +404,7 @@ export default function ProductDetail() {
             <Card key={sale.id} className="glass-card">
               <CardContent className="p-3 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-foreground">-{Number(sale.ml_sold)}ml</p>
+                  <p className="text-sm font-medium text-foreground">-{formatFrascos(sale.ml_sold)} frasco(s)</p>
                   <p className="text-xs text-muted-foreground">
                     {format(new Date(sale.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                   </p>
@@ -449,7 +449,7 @@ export default function ProductDetail() {
                         {MOVEMENT_LABEL[m.type as MovementType]}
                         <span className={cn("ml-2 font-bold", color)}>
                           {isIn ? "+" : ""}
-                          {change.toFixed(0)}ml
+                          {formatFrascos(Math.abs(change))} frasco(s)
                         </span>
                       </p>
                       <p className="text-[11px] text-muted-foreground truncate">
@@ -459,7 +459,7 @@ export default function ProductDetail() {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground shrink-0">
-                    Restou {Number(m.ml_after).toFixed(0)}ml
+                    Restou {formatFrascos(m.ml_after)} frasco(s)
                   </p>
                 </CardContent>
               </Card>
@@ -477,19 +477,19 @@ export default function ProductDetail() {
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
               Use ao reabastecer este perfume (compra de frasco novo, devolução etc).
-              Estoque atual: <span className="text-foreground font-medium">{Number(product.current_ml).toFixed(0)}ml</span>
+              Estoque atual: <span className="text-foreground font-medium">{formatFrascos(product.current_ml)} frasco(s)</span>
             </p>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Quantidade a adicionar (ml) *</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Quantidade de frascos a adicionar *</label>
               <Input
                 type="number"
-                inputMode="decimal"
-                step="0.1"
-                min="0.1"
+                inputMode="numeric"
+                step="1"
+                min="1"
                 value={restockMl}
                 onChange={(e) => setRestockMl(e.target.value)}
                 className="bg-secondary border-border"
-                placeholder="Ex: 100"
+                placeholder="Ex: 2"
                 autoFocus
               />
             </div>
@@ -557,9 +557,10 @@ export default function ProductDetail() {
               <Input value={editBrand} onChange={(e) => setEditBrand(e.target.value)} className="bg-secondary border-border" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Tamanho do frasco (ml) *</label>
-              <Input type="number" inputMode="decimal" step="0.1" min="0.1" value={editTotalMl} onChange={(e) => setEditTotalMl(e.target.value)} className="bg-secondary border-border" />
-              <p className="text-[10px] text-muted-foreground mt-1">Não altera o estoque atual ({Number(product.current_ml).toFixed(0)}ml). Use "Registrar entrada" para isso.</p>
+              <p className="text-[10px] text-muted-foreground">
+                Tamanho do frasco: 100 ml (padrão). Estoque atual: {formatFrascos(product.current_ml)} frasco(s).
+                Use "Registrar entrada" para alterar o estoque.
+              </p>
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Preço pago no frasco (R$)</label>
@@ -596,6 +597,43 @@ export default function ProductDetail() {
             <Button className="w-full" disabled={editMutation.isPending} onClick={() => editMutation.mutate()}>
               {editMutation.isPending ? "Salvando..." : "Salvar alterações"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Trocar foto Dialog */}
+      <Dialog open={photoOpen} onOpenChange={setPhotoOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Trocar foto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Escolha como quer atualizar a foto deste perfume.
+            </p>
+            <Button
+              className="w-full"
+              disabled={aiImageMutation.isPending}
+              onClick={() => aiImageMutation.mutate()}
+            >
+              {aiImageMutation.isPending ? "Buscando..." : "🔍 Buscar com IA"}
+            </Button>
+            <label className="flex items-center justify-center gap-2 h-12 rounded-lg border-2 border-dashed border-border cursor-pointer hover:border-primary/50 transition-colors">
+              <Upload className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                {uploadPhotoMutation.isPending ? "Enviando..." : "Enviar do celular"}
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                disabled={uploadPhotoMutation.isPending}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) uploadPhotoMutation.mutate(f);
+                }}
+                className="hidden"
+              />
+            </label>
           </div>
         </DialogContent>
       </Dialog>
