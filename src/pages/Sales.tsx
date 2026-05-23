@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Search, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { logMovement } from "@/lib/stockMovements";
 
 const QUICK_SIZES = [3, 5, 10, 15];
 
@@ -103,20 +104,35 @@ export default function Sales() {
 
       const costPrice = mlNum * Number(selected.cost_per_ml);
 
-      const { error: saleError } = await supabase.from("sales").insert({
-        user_id: user.id,
-        product_id: selected.id,
-        ml_sold: mlNum,
-        sale_price: priceNum,
-        cost_price: costPrice,
-      });
+      const { data: saleRow, error: saleError } = await supabase
+        .from("sales")
+        .insert({
+          user_id: user.id,
+          product_id: selected.id,
+          ml_sold: mlNum,
+          sale_price: priceNum,
+          cost_price: costPrice,
+        })
+        .select("id")
+        .single();
       if (saleError) throw saleError;
 
+      const newMl = Number(selected.current_ml) - mlNum;
       const { error: updateError } = await supabase
         .from("products")
-        .update({ current_ml: Number(selected.current_ml) - mlNum })
+        .update({ current_ml: newMl })
         .eq("id", selected.id);
       if (updateError) throw updateError;
+
+      await logMovement({
+        userId: user.id,
+        productId: selected.id,
+        type: "sale",
+        mlChange: -mlNum,
+        mlAfter: newMl,
+        note: mode === "frasco" ? "Venda (frasco fechado)" : "Venda (decant)",
+        saleId: saleRow?.id,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });

@@ -94,6 +94,42 @@ export type Database = {
           },
         ]
       }
+      stock_movements: {
+        Row: {
+          created_at: string
+          id: string
+          ml_after: number
+          ml_change: number
+          note: string | null
+          product_id: string
+          sale_id: string | null
+          type: Database["public"]["Enums"]["movement_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ml_after: number
+          ml_change: number
+          note?: string | null
+          product_id: string
+          sale_id?: string | null
+          type: Database["public"]["Enums"]["movement_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ml_after?: number
+          ml_change?: number
+          note?: string | null
+          product_id?: string
+          sale_id?: string | null
+          type?: Database["public"]["Enums"]["movement_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -102,7 +138,12 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      movement_type:
+        | "initial"
+        | "restock"
+        | "sale"
+        | "sale_reversal"
+        | "adjustment"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -229,6 +270,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      movement_type: [
+        "initial",
+        "restock",
+        "sale",
+        "sale_reversal",
+        "adjustment",
+      ],
+    },
   },
 } as const

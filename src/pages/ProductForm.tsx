@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ArrowLeft, Upload, Sparkles, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { logMovement } from "@/lib/stockMovements";
 
 export default function ProductForm() {
   const { user } = useAuth();
@@ -56,17 +57,31 @@ export default function ProductForm() {
       const sale = parseFloat(totalSalePrice) || 0;
       const costPerMl = ml > 0 ? cost / ml : 0;
       const salePerMl = ml > 0 ? sale / ml : 0;
-      const { error } = await supabase.from("products").insert({
-        user_id: user.id,
-        name: name.trim(),
-        brand: brand.trim() || null,
-        total_ml: ml,
-        current_ml: ml,
-        cost_per_ml: costPerMl,
-        sale_price_per_ml: salePerMl,
-        image_url,
-      });
+      const { data: inserted, error } = await supabase
+        .from("products")
+        .insert({
+          user_id: user.id,
+          name: name.trim(),
+          brand: brand.trim() || null,
+          total_ml: ml,
+          current_ml: ml,
+          cost_per_ml: costPerMl,
+          sale_price_per_ml: salePerMl,
+          image_url,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+      if (inserted) {
+        await logMovement({
+          userId: user.id,
+          productId: inserted.id,
+          type: "initial",
+          mlChange: ml,
+          mlAfter: ml,
+          note: "Estoque inicial (cadastro)",
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
@@ -184,8 +199,25 @@ export default function ProductForm() {
           sale_price_per_ml: sale / ml,
         };
       });
-      const { error } = await supabase.from("products").insert(rows);
+      const { data: insertedRows, error } = await supabase
+        .from("products")
+        .insert(rows)
+        .select("id, total_ml");
       if (error) throw error;
+      if (insertedRows) {
+        await Promise.all(
+          insertedRows.map((r: any) =>
+            logMovement({
+              userId: user.id,
+              productId: r.id,
+              type: "initial",
+              mlChange: Number(r.total_ml),
+              mlAfter: Number(r.total_ml),
+              note: "Estoque inicial (cadastro)",
+            }),
+          ),
+        );
+      }
       return rows.length;
     },
     onSuccess: (count) => {

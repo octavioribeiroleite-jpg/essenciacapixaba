@@ -1,51 +1,63 @@
-## Cadastro em lote por foto da nota fiscal (IA multi-perfume)
+## Objetivo
 
-Adicionar uma nova aba no cadastro de produto onde você envia uma foto (nota fiscal, lista impressa, planilha, print de pedido etc.) e a IA reconhece **todos os perfumes da imagem de uma vez** — você revisa, ajusta o preço de revenda e cadastra tudo no estoque com um clique.
+Criar um histórico de movimentações por perfume (entradas, saídas e ajustes), para você conseguir responder perguntas como "já comprei o Yara antes?" ou "quanto entrou esse mês?".
 
-### Fluxo do usuário
+## O que será feito
 
-1. Em **Produtos → Novo Produto**, aparecem duas abas no topo:
-   - **Manual** (formulário atual, sem mudanças)
-   - **Por Foto (IA)** (novo)
-2. Na aba "Por Foto":
-   - Botão grande para tirar foto / enviar imagem
-   - Pode enviar imagens com **vários perfumes diferentes** ao mesmo tempo (nota fiscal inteira, várias linhas de uma planilha, etc.)
-   - Loading "Analisando com IA..."
-   - IA retorna uma **lista editável** com todos os perfumes detectados:
-     - Nome | Marca | ML | Preço Pago | Preço Revenda (sugerido = pago × 2,3, editável)
-   - Cada linha tem checkbox (marcado por padrão) e botão de remover
-   - Você edita qualquer campo antes de confirmar
-   - Botão **"Cadastrar X produtos"** salva todos de uma vez no estoque
+### 1. Nova tabela `stock_movements`
 
-### Como a IA é configurada para múltiplos perfumes
+Cada linha representa uma movimentação de ml em um produto:
 
-- Prompt instrui explicitamente: "Identifique TODOS os perfumes presentes na imagem, não pule nenhum item, retorne sempre como array mesmo se for só 1"
-- **Structured output (Zod array schema)** força a resposta a ser uma lista — nunca um único objeto
-- Para cada item extrai: `name`, `brand`, `total_ml`, `total_cost`
-- Campos não detectados retornam `null` (você preenche manualmente na revisão)
-- Modelo: `google/gemini-2.5-flash` (multimodal, ótimo OCR de notas em português, rápido e barato)
+- `product_id` — perfume
+- `user_id` — dono (RLS)
+- `type` — `initial` (estoque inicial), `restock` (adição/compra), `sale` (venda), `adjustment` (ajuste manual), `sale_reversal` (quando você exclui uma venda)
+- `ml_change` — positivo (entrada) ou negativo (saída)
+- `ml_after` — estoque resultante após a movimentação
+- `note` — texto opcional (ex: "Compra AliExpress", "Frasco novo")
+- `sale_id` — referência opcional à venda, quando aplicável
+- `created_at`
 
-### Implementação técnica
+RLS: cada usuário só vê/edita as suas próprias movimentações.
 
-**Edge function nova** `supabase/functions/parse-invoice/index.ts`:
-- Recebe imagem em base64
-- Chama Lovable AI Gateway (Vercel AI SDK + Gemini 2.5 Flash multimodal)
-- `generateText` com `Output.array()` garantindo lista de itens
-- Prompt em português orientado a notas brasileiras de perfumaria
-- Retorna `{ items: [...] }` para o frontend
+### 2. Backfill do histórico existente
 
-**Frontend** — `src/pages/ProductForm.tsx`:
-- `Tabs` shadcn com "Manual" e "Por Foto (IA)"
-- Aba Manual: intacta
-- Aba IA: upload + tabela editável + botão de cadastro em lote (`insert` array no Supabase, calculando `cost_per_ml = preço pago ÷ ml` e `sale_price_per_ml = preço revenda ÷ ml` para cada linha)
-- Tratamento de erro de crédito (402) e rate-limit (429) com mensagens claras
+- Para cada produto já cadastrado: criar uma movimentação `initial` com `ml_change = current_ml` na data de `created_at` do produto.
+- Para cada venda já existente: criar movimentação `sale` correspondente (negativa).
 
-### O que NÃO muda
+Assim você consegue olhar o Yara e ver "Estoque inicial: 100ml" + as vendas que aconteceram.
 
-- Cadastro manual continua igual
-- Schema do banco (cada item vira uma linha normal em `products`)
-- Vendas, QR Code, dashboard, relatórios
+### 3. Registrar movimentações automaticamente daqui pra frente
 
-### Custo
+Ajustar o código nos pontos onde o estoque muda:
 
-Cada análise consome alguns centavos de crédito da Lovable AI, independentemente de ter 1 ou 30 perfumes na foto.
+- **Criar produto** (`ProductForm`) → registra `initial`
+- **Editar produto** alterando `current_ml` → registra `adjustment` (com a diferença)
+- **Reabastecer / aumentar ml** (botão de adição rápida, se existir) → registra `restock`
+- **Vender** → registra `sale` (negativa) com `sale_id`
+- **Excluir venda** (`Reports.tsx`) → registra `sale_reversal` (positiva) com `sale_id`
+
+### 4. UI — Histórico do perfume
+
+Na tela de detalhe/edição do produto, adicionar uma seção **"Histórico de movimentações"**:
+
+- Lista cronológica reversa (mais recente primeiro)
+- Cada item mostra: ícone do tipo (↑ entrada / ↓ saída / ⚙ ajuste), data, ml movimentado, ml resultante, e a nota
+- Filtro rápido por tipo (Todas / Entradas / Saídas)
+- Botão **"Registrar entrada"** abre um modal pequeno: quantos ml adicionar + nota opcional → cria `restock` e atualiza `current_ml`
+
+### 5. (Opcional, incluído) Resumo no card do produto no Dashboard
+
+Mostrar discretamente "Última entrada: há X dias" quando houver, pra dar contexto rápido sem precisar abrir o histórico.
+
+## Detalhes técnicos
+
+- Migration cria a tabela, índices (`product_id`, `user_id`, `created_at`) e RLS.
+- Backfill roda dentro da mesma migration usando `INSERT ... SELECT` a partir de `products` e `sales`.
+- Tipo enum `movement_type` em Postgres para garantir consistência.
+- Mutations no frontend usam `useMutation` e invalidam as queries `product-movements`, `products`, `sales`.
+- Sem mudança no fluxo de venda existente além de gravar a linha extra em `stock_movements`.
+
+## Fora do escopo
+
+- Relatório agregado de entradas por mês (pode vir depois)
+- Exportação CSV do histórico

@@ -6,13 +6,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, QrCode, Download, Trash2 } from "lucide-react";
+import { ArrowLeft, QrCode, Download, Trash2, Plus, ArrowUp, ArrowDown, Settings2, History } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { logMovement, MOVEMENT_LABEL, type MovementType } from "@/lib/stockMovements";
 
 const QUICK_SIZES = [3, 5, 10, 15];
 
@@ -23,6 +24,9 @@ export default function ProductDetail() {
   const queryClient = useQueryClient();
   const [qrOpen, setQrOpen] = useState(false);
   const [customMl, setCustomMl] = useState("");
+  const [restockOpen, setRestockOpen] = useState(false);
+  const [restockMl, setRestockMl] = useState("");
+  const [restockNote, setRestockNote] = useState("");
   const qrRef = useRef<HTMLCanvasElement>(null);
 
   const { data: product } = useQuery({
@@ -50,6 +54,53 @@ export default function ProductDetail() {
     enabled: !!user && !!id,
   });
 
+  const { data: movements } = useQuery({
+    queryKey: ["product-movements", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stock_movements")
+        .select("*")
+        .eq("product_id", id!)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && !!id,
+  });
+
+  const restockMutation = useMutation({
+    mutationFn: async () => {
+      if (!product || !user) throw new Error("Erro");
+      const add = parseFloat(restockMl);
+      if (!add || add <= 0) throw new Error("Informe quantos ml adicionar");
+      const newMl = Number(product.current_ml) + add;
+      const { error } = await supabase
+        .from("products")
+        .update({ current_ml: newMl })
+        .eq("id", product.id);
+      if (error) throw error;
+      await logMovement({
+        userId: user.id,
+        productId: product.id,
+        type: "restock",
+        mlChange: add,
+        mlAfter: newMl,
+        note: restockNote.trim() || "Reposição de estoque",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+      queryClient.invalidateQueries({ queryKey: ["product-movements", id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Entrada registrada!");
+      setRestockOpen(false);
+      setRestockMl("");
+      setRestockNote("");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const sellMutation = useMutation({
     mutationFn: async (ml: number) => {
       if (!product || !user) throw new Error("Erro");
@@ -58,24 +109,40 @@ export default function ProductDetail() {
       const salePrice = ml * Number(product.sale_price_per_ml);
       const costPrice = ml * Number(product.cost_per_ml);
 
-      const { error: saleError } = await supabase.from("sales").insert({
-        user_id: user.id,
-        product_id: product.id,
-        ml_sold: ml,
-        sale_price: salePrice,
-        cost_price: costPrice,
-      });
+      const { data: saleRow, error: saleError } = await supabase
+        .from("sales")
+        .insert({
+          user_id: user.id,
+          product_id: product.id,
+          ml_sold: ml,
+          sale_price: salePrice,
+          cost_price: costPrice,
+        })
+        .select("id")
+        .single();
       if (saleError) throw saleError;
 
+      const newMl = Number(product.current_ml) - ml;
       const { error: updateError } = await supabase
         .from("products")
-        .update({ current_ml: Number(product.current_ml) - ml })
+        .update({ current_ml: newMl })
         .eq("id", product.id);
       if (updateError) throw updateError;
+
+      await logMovement({
+        userId: user.id,
+        productId: product.id,
+        type: "sale",
+        mlChange: -ml,
+        mlAfter: newMl,
+        note: "Venda rápida (decant)",
+        saleId: saleRow?.id,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["product", id] });
       queryClient.invalidateQueries({ queryKey: ["product-sales", id] });
+      queryClient.invalidateQueries({ queryKey: ["product-movements", id] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["sales-month"] });
       toast.success("Venda registrada!");
@@ -181,6 +248,9 @@ export default function ProductDetail() {
         <Button variant="outline" className="flex-1" onClick={() => setQrOpen(true)}>
           <QrCode className="h-4 w-4 mr-1" /> Etiqueta Niimbot
         </Button>
+        <Button variant="outline" className="flex-1" onClick={() => setRestockOpen(true)}>
+          <Plus className="h-4 w-4 mr-1" /> Registrar entrada
+        </Button>
         <Button
           variant="destructive"
           size="icon"
@@ -255,6 +325,98 @@ export default function ProductDetail() {
           ))}
         </div>
       </div>
+
+      {/* Stock movements history */}
+      <div>
+        <h2 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+          <History className="h-4 w-4 text-primary" /> Histórico de movimentações
+        </h2>
+        {(!movements || movements.length === 0) && (
+          <p className="text-xs text-muted-foreground">Nenhuma movimentação registrada.</p>
+        )}
+        <div className="space-y-2">
+          {movements?.map((m: any) => {
+            const change = Number(m.ml_change);
+            const isIn = change >= 0;
+            const Icon = m.type === "adjustment" ? Settings2 : isIn ? ArrowUp : ArrowDown;
+            const color = m.type === "adjustment"
+              ? "text-muted-foreground"
+              : isIn
+              ? "text-success"
+              : "text-warning";
+            return (
+              <Card key={m.id} className="glass-card">
+                <CardContent className="p-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon className={cn("h-4 w-4 shrink-0", color)} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        {MOVEMENT_LABEL[m.type as MovementType]}
+                        <span className={cn("ml-2 font-bold", color)}>
+                          {isIn ? "+" : ""}
+                          {change.toFixed(0)}ml
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {format(new Date(m.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        {m.note ? ` · ${m.note}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground shrink-0">
+                    Restou {Number(m.ml_after).toFixed(0)}ml
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Restock Dialog */}
+      <Dialog open={restockOpen} onOpenChange={setRestockOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Registrar entrada</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Use ao reabastecer este perfume (compra de frasco novo, devolução etc).
+              Estoque atual: <span className="text-foreground font-medium">{Number(product.current_ml).toFixed(0)}ml</span>
+            </p>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Quantidade a adicionar (ml) *</label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                min="0.1"
+                value={restockMl}
+                onChange={(e) => setRestockMl(e.target.value)}
+                className="bg-secondary border-border"
+                placeholder="Ex: 100"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Observação</label>
+              <Input
+                value={restockNote}
+                onChange={(e) => setRestockNote(e.target.value)}
+                className="bg-secondary border-border"
+                placeholder="Ex: Frasco novo AliExpress"
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={!restockMl || restockMutation.isPending}
+              onClick={() => restockMutation.mutate()}
+            >
+              {restockMutation.isPending ? "Registrando..." : "Adicionar ao estoque"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* QR Code Dialog */}
       <Dialog open={qrOpen} onOpenChange={setQrOpen}>
