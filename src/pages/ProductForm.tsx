@@ -632,11 +632,11 @@ export default function ProductForm() {
                           />
                         </div>
                       </div>
-                      {ml > 0 && (
+                      {(cost > 0 || sale > 0) && (
                         <div className="text-[10px] text-muted-foreground flex justify-between">
-                          <span>Custo/ml: R$ {(cost / ml).toFixed(2)}</span>
-                          <span>Venda/ml: R$ {(sale / ml).toFixed(2)}</span>
-                          <span className="text-success font-medium">Lucro/ml: R$ {profitMl.toFixed(2)}</span>
+                          <span>{qty} frasco(s)</span>
+                          <span>Total custo: R$ {(cost * qty).toFixed(2)}</span>
+                          <span className="text-success font-medium">Lucro/frasco: R$ {profitFrasco.toFixed(2)}</span>
                         </div>
                       )}
                     </div>
