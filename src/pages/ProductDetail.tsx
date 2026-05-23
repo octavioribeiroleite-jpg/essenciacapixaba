@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, QrCode, Download, Trash2, Plus, ArrowUp, ArrowDown, Settings2, History } from "lucide-react";
+import { ArrowLeft, QrCode, Download, Trash2, Plus, ArrowUp, ArrowDown, Settings2, History, Pencil, Upload } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
@@ -27,6 +27,14 @@ export default function ProductDetail() {
   const [restockOpen, setRestockOpen] = useState(false);
   const [restockMl, setRestockMl] = useState("");
   const [restockNote, setRestockNote] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editBrand, setEditBrand] = useState("");
+  const [editTotalMl, setEditTotalMl] = useState("");
+  const [editTotalCost, setEditTotalCost] = useState("");
+  const [editTotalSale, setEditTotalSale] = useState("");
+  const [editImage, setEditImage] = useState<File | null>(null);
+  const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
   const qrRef = useRef<HTMLCanvasElement>(null);
 
   const { data: product } = useQuery({
@@ -163,6 +171,61 @@ export default function ProductDetail() {
     },
   });
 
+  const openEdit = () => {
+    if (!product) return;
+    setEditName(product.name);
+    setEditBrand(product.brand || "");
+    setEditTotalMl(String(product.total_ml));
+    setEditTotalCost((Number(product.cost_per_ml) * Number(product.total_ml)).toFixed(2));
+    setEditTotalSale((Number(product.sale_price_per_ml) * Number(product.total_ml)).toFixed(2));
+    setEditImage(null);
+    setEditImagePreview(null);
+    setEditOpen(true);
+  };
+
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!product || !user) throw new Error("Erro");
+      const ml = parseFloat(editTotalMl);
+      const cost = parseFloat(editTotalCost) || 0;
+      const sale = parseFloat(editTotalSale) || 0;
+      if (!editName.trim()) throw new Error("Nome é obrigatório");
+      if (!ml || ml <= 0) throw new Error("ML do frasco inválido");
+
+      let image_url = product.image_url;
+      if (editImage) {
+        const ext = editImage.name.split(".").pop();
+        const path = `${user.id}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("product-images")
+          .upload(path, editImage);
+        if (upErr) throw upErr;
+        const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
+        image_url = urlData.publicUrl;
+      }
+
+      const { error } = await supabase
+        .from("products")
+        .update({
+          name: editName.trim(),
+          brand: editBrand.trim() || null,
+          total_ml: ml,
+          cost_per_ml: cost / ml,
+          sale_price_per_ml: sale / ml,
+          image_url,
+        })
+        .eq("id", product.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Produto atualizado!");
+      setEditOpen(false);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const downloadQR = () => {
     const canvas = document.querySelector("#qr-canvas canvas") as HTMLCanvasElement;
     if (!canvas) return;
@@ -250,6 +313,9 @@ export default function ProductDetail() {
         </Button>
         <Button variant="outline" className="flex-1" onClick={() => setRestockOpen(true)}>
           <Plus className="h-4 w-4 mr-1" /> Registrar entrada
+        </Button>
+        <Button variant="outline" size="icon" onClick={openEdit}>
+          <Pencil className="h-4 w-4" />
         </Button>
         <Button
           variant="destructive"
