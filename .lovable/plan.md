@@ -1,63 +1,52 @@
-## Objetivo
+## O que vai mudar
 
-Criar um histórico de movimentações por perfume (entradas, saídas e ajustes), para você conseguir responder perguntas como "já comprei o Yara antes?" ou "quanto entrou esse mês?".
+### 1. Preço de venda automático = Custo + R$ 100
 
-## O que será feito
+No formulário **manual** e nos **rascunhos da IA**, o campo "Preço de revenda" deixa de ser obrigatório e passa a ser **calculado automaticamente** como `custo do frasco + R$ 100`.
 
-### 1. Nova tabela `stock_movements`
+- O campo continua editável (caso queira ajustar pontualmente), mas vem pré-preenchido.
+- Bloco "Cálculo automático" mostra: custo/ml, venda/ml, **lucro do frasco = R$ 100**, lucro/ml.
+- Vale igual no fluxo manual e no fluxo de IA (imagem e texto).
 
-Cada linha representa uma movimentação de ml em um produto:
+### 2. Importação por TEXTO (colar lista)
 
-- `product_id` — perfume
-- `user_id` — dono (RLS)
-- `type` — `initial` (estoque inicial), `restock` (adição/compra), `sale` (venda), `adjustment` (ajuste manual), `sale_reversal` (quando você exclui uma venda)
-- `ml_change` — positivo (entrada) ou negativo (saída)
-- `ml_after` — estoque resultante após a movimentação
-- `note` — texto opcional (ex: "Compra AliExpress", "Frasco novo")
-- `sale_id` — referência opcional à venda, quando aplicável
-- `created_at`
+Na tela de cadastro, a aba **"Por Foto (IA)"** vira **"IA (Foto ou Texto)"** com duas sub-abas:
 
-RLS: cada usuário só vê/edita as suas próprias movimentações.
+- **Foto** — fluxo atual (manda imagem pra `parse-invoice`)
+- **Texto** — textarea grande onde você cola lista, pedido, mensagem do WhatsApp, etc. Botão "Analisar texto" chama uma nova edge function `parse-invoice-text` que usa o mesmo modelo Gemini com tool-calling pra extrair os perfumes (nome, marca, ml, custo).
 
-### 2. Backfill do histórico existente
+Resultado cai na mesma lista de rascunhos editáveis que já existe hoje — você confere, marca/desmarca e salva tudo de uma vez. O estoque é atualizado igual ao fluxo atual (já registra movimentação `initial`).
 
-- Para cada produto já cadastrado: criar uma movimentação `initial` com `ml_change = current_ml` na data de `created_at` do produto.
-- Para cada venda já existente: criar movimentação `sale` correspondente (negativa).
+### 3. Imagem real do perfume buscada pela IA (automático)
 
-Assim você consegue olhar o Yara e ver "Estoque inicial: 100ml" + as vendas que aconteceram.
+Quando um rascunho é confirmado para salvar **e não tem imagem enviada manualmente**, uma nova edge function `fetch-perfume-image` é chamada com `{nome, marca}`:
 
-### 3. Registrar movimentações automaticamente daqui pra frente
+- Usa Gemini com **web grounding** pra encontrar a URL de uma imagem oficial do frasco.
+- A edge baixa a imagem, redimensiona pra ~600px e faz upload no bucket `product-images` (já existe e é público).
+- O `image_url` do produto é preenchido automaticamente.
 
-Ajustar o código nos pontos onde o estoque muda:
+Comportamento ao falhar:
+- Se nenhuma imagem confiável for encontrada, o produto é salvo **sem imagem** (igual hoje) e aparece um toast discreto "Imagem não encontrada para X — você pode adicionar depois".
+- Nada bloqueia o cadastro.
 
-- **Criar produto** (`ProductForm`) → registra `initial`
-- **Editar produto** alterando `current_ml` → registra `adjustment` (com a diferença)
-- **Reabastecer / aumentar ml** (botão de adição rápida, se existir) → registra `restock`
-- **Vender** → registra `sale` (negativa) com `sale_id`
-- **Excluir venda** (`Reports.tsx`) → registra `sale_reversal` (positiva) com `sale_id`
-
-### 4. UI — Histórico do perfume
-
-Na tela de detalhe/edição do produto, adicionar uma seção **"Histórico de movimentações"**:
-
-- Lista cronológica reversa (mais recente primeiro)
-- Cada item mostra: ícone do tipo (↑ entrada / ↓ saída / ⚙ ajuste), data, ml movimentado, ml resultante, e a nota
-- Filtro rápido por tipo (Todas / Entradas / Saídas)
-- Botão **"Registrar entrada"** abre um modal pequeno: quantos ml adicionar + nota opcional → cria `restock` e atualiza `current_ml`
-
-### 5. (Opcional, incluído) Resumo no card do produto no Dashboard
-
-Mostrar discretamente "Última entrada: há X dias" quando houver, pra dar contexto rápido sem precisar abrir o histórico.
+Importante: a busca acontece em background depois do cadastro inicial, então a confirmação é rápida. As imagens aparecem no catálogo assim que cada uma termina (atualização da query `products`).
 
 ## Detalhes técnicos
 
-- Migration cria a tabela, índices (`product_id`, `user_id`, `created_at`) e RLS.
-- Backfill roda dentro da mesma migration usando `INSERT ... SELECT` a partir de `products` e `sales`.
-- Tipo enum `movement_type` em Postgres para garantir consistência.
-- Mutations no frontend usam `useMutation` e invalidam as queries `product-movements`, `products`, `sales`.
-- Sem mudança no fluxo de venda existente além de gravar a linha extra em `stock_movements`.
+**Arquivos alterados:**
+- `src/pages/ProductForm.tsx` — preço de venda auto-calculado (custo + 100), nova sub-aba Texto, dispara busca de imagem após salvar produto sem foto.
+- `supabase/functions/parse-invoice-text/index.ts` — nova edge function, espelha `parse-invoice` mas recebe `{ text: string }` em vez de imagem; mesmo tool-call `register_perfumes`.
+- `supabase/functions/fetch-perfume-image/index.ts` — nova edge function: chama Gemini com web search grounding pra obter URL, baixa imagem, sobe no bucket `product-images`, retorna URL pública.
 
-## Fora do escopo
+**Regra do preço (Custo + R$ 100):**
+- `total_sale = total_cost + 100`
+- `sale_price_per_ml = (total_cost + 100) / total_ml`
+- Em ambos os fluxos (manual e draft IA), recalcula em tempo real conforme o usuário digita o custo. Campo editável caso queira sobrescrever.
 
-- Relatório agregado de entradas por mês (pode vir depois)
-- Exportação CSV do histórico
+**Sem mudanças no banco** — `image_url`, `sale_price_per_ml` e `cost_per_ml` já existem.
+
+**Custo de IA:** cada cadastro com IA pode disparar até 2 chamadas extras (parse + busca de imagem). Tudo via Lovable AI Gateway, sem chave nova.
+
+## Limitações honestas sobre a imagem da internet
+
+Busca de imagem por IA não é 100% confiável — às vezes o modelo retorna uma URL quebrada, uma imagem de outro perfume, ou nenhuma. O plano trata isso como **best-effort**: se vier, ótimo; se não vier, o produto fica sem foto e você pode anexar manualmente depois (a tela de edição do produto já permite). Não vou prometer foto pra 100% dos casos.
