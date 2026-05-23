@@ -511,6 +511,65 @@ export default function ProductDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Product Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Editar produto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Nome *</label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="bg-secondary border-border" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Marca</label>
+              <Input value={editBrand} onChange={(e) => setEditBrand(e.target.value)} className="bg-secondary border-border" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Tamanho do frasco (ml) *</label>
+              <Input type="number" inputMode="decimal" step="0.1" min="0.1" value={editTotalMl} onChange={(e) => setEditTotalMl(e.target.value)} className="bg-secondary border-border" />
+              <p className="text-[10px] text-muted-foreground mt-1">Não altera o estoque atual ({Number(product.current_ml).toFixed(0)}ml). Use "Registrar entrada" para isso.</p>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Preço pago no frasco (R$)</label>
+              <Input type="number" inputMode="decimal" step="0.01" min="0" value={editTotalCost} onChange={(e) => setEditTotalCost(e.target.value)} className="bg-secondary border-border" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Preço de revenda do frasco (R$)</label>
+              <Input type="number" inputMode="decimal" step="0.01" min="0" value={editTotalSale} onChange={(e) => setEditTotalSale(e.target.value)} className="bg-secondary border-border" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Trocar foto</label>
+              <label className="flex items-center justify-center gap-2 h-20 rounded-lg border-2 border-dashed border-border cursor-pointer hover:border-primary/50">
+                {editImagePreview ? (
+                  <img src={editImagePreview} alt="Preview" className="h-16 w-16 rounded-lg object-cover" />
+                ) : product.image_url ? (
+                  <img src={product.image_url} alt="Atual" className="h-16 w-16 rounded-lg object-cover opacity-70" />
+                ) : (
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      setEditImage(f);
+                      setEditImagePreview(URL.createObjectURL(f));
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            <Button className="w-full" disabled={editMutation.isPending} onClick={() => editMutation.mutate()}>
+              {editMutation.isPending ? "Salvando..." : "Salvar alterações"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
