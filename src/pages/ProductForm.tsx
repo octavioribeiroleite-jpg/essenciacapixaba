@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ArrowLeft, Upload, Sparkles, Trash2, Loader2, Image as ImageIcon, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { logMovement } from "@/lib/stockMovements";
+import { ML_PER_FRASCO, normalizeName } from "@/lib/frascos";
 
 const FIXED_PROFIT = 100; // R$ de lucro por frasco
 
@@ -31,7 +32,7 @@ export default function ProductForm() {
 
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
-  const [totalMl, setTotalMl] = useState("");
+  const [qtyFrascos, setQtyFrascos] = useState("1");
   const [totalCost, setTotalCost] = useState("");
   const [totalSalePrice, setTotalSalePrice] = useState("");
   const [saleTouched, setSaleTouched] = useState(false);
@@ -77,18 +78,40 @@ export default function ProductForm() {
         image_url = urlData.publicUrl;
       }
 
-      const ml = parseFloat(totalMl);
+      const qty = Math.max(1, Math.floor(parseFloat(qtyFrascos) || 1));
+      const ml = qty * ML_PER_FRASCO;
       const cost = parseFloat(totalCost) || 0;
       const sale = parseFloat(totalSalePrice) || 0;
-      const costPerMl = ml > 0 ? cost / ml : 0;
-      const salePerMl = ml > 0 ? sale / ml : 0;
+      const costPerMl = cost / ML_PER_FRASCO;
+      const salePerMl = sale / ML_PER_FRASCO;
+
+      // dedup: se já existe produto com nome+marca (normalizado), faz restock
+      const existing = await findExistingProduct(user.id, name, brand);
+      if (existing) {
+        const newCurrent = Number(existing.current_ml) + ml;
+        const { error: uErr } = await supabase
+          .from("products")
+          .update({ current_ml: newCurrent })
+          .eq("id", existing.id);
+        if (uErr) throw uErr;
+        await logMovement({
+          userId: user.id,
+          productId: existing.id,
+          type: "restock",
+          mlChange: ml,
+          mlAfter: newCurrent,
+          note: `+${qty} frasco(s) (duplicata detectada no cadastro)`,
+        });
+        return { merged: true, name: existing.name };
+      }
+
       const { data: inserted, error } = await supabase
         .from("products")
         .insert({
           user_id: user.id,
           name: name.trim(),
           brand: brand.trim() || null,
-          total_ml: ml,
+          total_ml: ML_PER_FRASCO,
           current_ml: ml,
           cost_per_ml: costPerMl,
           sale_price_per_ml: salePerMl,
@@ -104,16 +127,18 @@ export default function ProductForm() {
           type: "initial",
           mlChange: ml,
           mlAfter: ml,
-          note: "Estoque inicial (cadastro)",
+          note: `Estoque inicial: ${qty} frasco(s)`,
         });
         if (!image_url) {
           fetchImageInBackground(inserted.id, user.id, name.trim(), brand.trim() || null);
         }
       }
+      return { merged: false };
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success("Produto cadastrado!");
+      if (res?.merged) toast.success(`Frascos somados ao estoque de "${res.name}"`);
+      else toast.success("Produto cadastrado!");
       navigate("/products");
     },
     onError: (err: any) => {
@@ -121,19 +146,17 @@ export default function ProductForm() {
     },
   });
 
-  const mlNum = parseFloat(totalMl) || 0;
+  const qtyNum = Math.max(1, Math.floor(parseFloat(qtyFrascos) || 1));
   const costNum = parseFloat(totalCost) || 0;
   const saleNum = parseFloat(totalSalePrice) || 0;
-  const costPerMl = mlNum > 0 ? costNum / mlNum : 0;
-  const salePerMl = mlNum > 0 ? saleNum / mlNum : 0;
-  const profitPerMl = salePerMl - costPerMl;
+  const profitPerFrasco = saleNum - costNum;
 
   // ===== AI batch import =====
   type DraftItem = {
     selected: boolean;
     name: string;
     brand: string;
-    total_ml: string;
+    qty_frascos: string;
     total_cost: string;
     total_sale: string;
     saleTouched?: boolean;
