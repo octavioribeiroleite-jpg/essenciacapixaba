@@ -566,10 +566,10 @@ export default function ProductForm() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {drafts.map((d, i) => {
-                  const ml = parseFloat(d.total_ml) || 0;
+                  const qty = Math.max(1, Math.floor(parseFloat(d.qty_frascos) || 1));
                   const cost = parseFloat(d.total_cost) || 0;
                   const sale = parseFloat(d.total_sale) || 0;
-                  const profitMl = ml > 0 ? (sale - cost) / ml : 0;
+                  const profitFrasco = sale - cost;
                   return (
                     <div
                       key={i}
@@ -600,12 +600,14 @@ export default function ProductForm() {
                       />
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <label className="text-[10px] text-muted-foreground block mb-0.5">ML</label>
+                          <label className="text-[10px] text-muted-foreground block mb-0.5">Frascos</label>
                           <Input
                             type="number"
-                            inputMode="decimal"
-                            value={d.total_ml}
-                            onChange={(e) => updateDraft(i, { total_ml: e.target.value })}
+                            inputMode="numeric"
+                            min="1"
+                            step="1"
+                            value={d.qty_frascos}
+                            onChange={(e) => updateDraft(i, { qty_frascos: e.target.value })}
                             className="bg-secondary border-border h-8 text-xs"
                           />
                         </div>
