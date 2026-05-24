@@ -112,16 +112,15 @@ export default function Reports() {
       if (!user) throw new Error("Não autenticado");
       const { data: prod, error: pErr } = await supabase
         .from("products")
-        .select("current_ml, total_ml")
+        .select("current_ml")
         .eq("id", mov.product_id)
         .single();
       if (pErr) throw pErr;
-      // Revert the ml_change from current stock
-      const reverted = Number(prod.current_ml) - Number(mov.ml_change);
-      const capped = Math.max(0, Math.min(reverted, Number(prod.total_ml)));
+      // Reverte o ml_change; não limita por total_ml (produto pode ter vários frascos em estoque)
+      const reverted = Math.max(0, Number(prod.current_ml) - Number(mov.ml_change));
       const { error: uErr } = await supabase
         .from("products")
-        .update({ current_ml: capped })
+        .update({ current_ml: reverted })
         .eq("id", mov.product_id);
       if (uErr) throw uErr;
       const { error: dErr } = await supabase
@@ -150,12 +149,12 @@ export default function Reports() {
 
       const { data: prod, error: pErr } = await supabase
         .from("products")
-        .select("current_ml, total_ml")
+        .select("current_ml")
         .eq("id", editMov.product_id)
         .single();
       if (pErr) throw pErr;
 
-      const newCurrent = Math.max(0, Math.min(Number(prod.current_ml) + diff, Number(prod.total_ml)));
+      const newCurrent = Math.max(0, Number(prod.current_ml) + diff);
       const { error: uErr } = await supabase
         .from("products")
         .update({ current_ml: newCurrent })
@@ -188,17 +187,16 @@ export default function Reports() {
       if (!user) throw new Error("Não autenticado");
       const { data: product, error: pErr } = await supabase
         .from("products")
-        .select("current_ml, total_ml")
+        .select("current_ml")
         .eq("id", sale.product_id)
         .single();
       if (pErr) throw pErr;
 
       const restored = Number(product.current_ml) + Number(sale.ml_sold);
-      const capped = Math.min(restored, Number(product.total_ml));
 
       const { error: uErr } = await supabase
         .from("products")
-        .update({ current_ml: capped })
+        .update({ current_ml: restored })
         .eq("id", sale.product_id);
       if (uErr) throw uErr;
 
@@ -210,7 +208,7 @@ export default function Reports() {
         productId: sale.product_id,
         type: "sale_reversal",
         mlChange: Number(sale.ml_sold),
-        mlAfter: capped,
+        mlAfter: restored,
         note: "Venda excluída — ml retornados",
         saleId: sale.id,
       });
