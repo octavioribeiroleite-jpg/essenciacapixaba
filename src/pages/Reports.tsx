@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { logMovement } from "@/lib/stockMovements";
+import { ML_PER_FRASCO } from "@/lib/frascos";
 import { MOVEMENT_LABEL, type MovementType } from "@/lib/stockMovements";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -116,11 +117,21 @@ export default function Reports() {
         .eq("id", mov.product_id)
         .single();
       if (pErr) throw pErr;
-      // Reverte o ml_change; não limita por total_ml (produto pode ter vários frascos em estoque)
-      const reverted = Math.max(0, Number(prod.current_ml) - Number(mov.ml_change));
+      // Reverte o ml_change; impede estoque negativo
+      const current = Number(prod.current_ml);
+      const change = Number(mov.ml_change);
+      const reverted = current - change;
+      if (reverted < 0) {
+        const faltamFr = Math.ceil((change - current) / ML_PER_FRASCO);
+        throw new Error(
+          `Não é possível excluir: estoque atual (${current.toFixed(0)}ml) é menor que a entrada (${change.toFixed(0)}ml). Faltam ${faltamFr} frasco(s).`,
+        );
+      }
+      // Arredonda para evitar resíduos de ponto flutuante
+      const revertedRounded = Math.round(reverted);
       const { error: uErr } = await supabase
         .from("products")
-        .update({ current_ml: reverted })
+        .update({ current_ml: revertedRounded })
         .eq("id", mov.product_id);
       if (uErr) throw uErr;
       const { error: dErr } = await supabase
@@ -144,6 +155,7 @@ export default function Reports() {
       if (!editMov) throw new Error("Erro");
       const newMl = parseFloat(editMovMl);
       if (isNaN(newMl)) throw new Error("ml inválido");
+      if (newMl < 0) throw new Error("ml não pode ser negativo");
       const oldMl = Number(editMov.ml_change);
       const diff = newMl - oldMl;
 
@@ -154,10 +166,16 @@ export default function Reports() {
         .single();
       if (pErr) throw pErr;
 
-      const newCurrent = Math.max(0, Number(prod.current_ml) + diff);
+      const newCurrent = Number(prod.current_ml) + diff;
+      if (newCurrent < 0) {
+        throw new Error(
+          `Ajuste inválido: estoque ficaria negativo (${newCurrent.toFixed(0)}ml). Reduza a alteração.`,
+        );
+      }
+      const newCurrentRounded = Math.round(newCurrent);
       const { error: uErr } = await supabase
         .from("products")
-        .update({ current_ml: newCurrent })
+        .update({ current_ml: newCurrentRounded })
         .eq("id", editMov.product_id);
       if (uErr) throw uErr;
 
@@ -165,7 +183,7 @@ export default function Reports() {
         .from("stock_movements")
         .update({
           ml_change: newMl,
-          ml_after: Number(editMov.ml_after) + diff,
+          ml_after: Math.max(0, Number(editMov.ml_after) + diff),
           note: editMovNote.trim() || null,
         })
         .eq("id", editMov.id);
@@ -192,7 +210,9 @@ export default function Reports() {
         .single();
       if (pErr) throw pErr;
 
-      const restored = Number(product.current_ml) + Number(sale.ml_sold);
+      const mlSold = Number(sale.ml_sold);
+      if (mlSold <= 0) throw new Error("Venda inválida: ml vendidos não positivo.");
+      const restored = Math.round(Number(product.current_ml) + mlSold);
 
       const { error: uErr } = await supabase
         .from("products")
@@ -207,7 +227,7 @@ export default function Reports() {
         userId: user.id,
         productId: sale.product_id,
         type: "sale_reversal",
-        mlChange: Number(sale.ml_sold),
+        mlChange: mlSold,
         mlAfter: restored,
         note: "Venda excluída — ml retornados",
         saleId: sale.id,
