@@ -6,6 +6,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ArrowLeft, QrCode, Download, Trash2, Plus, ArrowUp, ArrowDown, Settings2, History, Pencil, Upload } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
@@ -361,15 +372,31 @@ export default function ProductDetail() {
         <Button variant="outline" size="icon" onClick={openEdit}>
           <Pencil className="h-4 w-4" />
         </Button>
-        <Button
-          variant="destructive"
-          size="icon"
-          onClick={() => {
-            if (confirm("Excluir este produto?")) deleteMutation.mutate();
-          }}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" size="icon">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação não pode ser desfeita. <strong>{product.name}</strong> e todo o histórico
+                de movimentações serão removidos permanentemente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deleteMutation.mutate()}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                Sim, excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {/* Quick Sale Buttons */}
