@@ -129,7 +129,7 @@ export default function Sales() {
   const maxFrascos = selected ? Math.floor(Number(selected.current_ml) / ML_PER_FRASCO) : 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:max-w-2xl lg:mx-auto">
       <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
         <ShoppingCart className="h-5 w-5 text-primary" />
         Registrar Venda
