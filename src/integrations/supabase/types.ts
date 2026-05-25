@@ -28,6 +28,7 @@ export type Database = {
           image_url: string | null
           longevity: string | null
           name: string
+          occasions: string[] | null
           sale_price_per_ml: number
           sillage: string | null
           total_ml: number
@@ -47,6 +48,7 @@ export type Database = {
           image_url?: string | null
           longevity?: string | null
           name: string
+          occasions?: string[] | null
           sale_price_per_ml?: number
           sillage?: string | null
           total_ml?: number
@@ -66,6 +68,7 @@ export type Database = {
           image_url?: string | null
           longevity?: string | null
           name?: string
+          occasions?: string[] | null
           sale_price_per_ml?: number
           sillage?: string | null
           total_ml?: number
