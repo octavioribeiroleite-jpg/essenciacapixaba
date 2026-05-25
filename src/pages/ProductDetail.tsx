@@ -592,7 +592,7 @@ export default function ProductDetail() {
                     <div className="bg-secondary rounded-xl p-2.5 flex items-center gap-2">
                       <Waves className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                       <div>
-                        <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Sillage</p>
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Projeção</p>
                         <p className="text-xs font-semibold">{p.sillage}</p>
                       </div>
                     </div>
@@ -970,7 +970,7 @@ export default function ProductDetail() {
                 </Select>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Sillage</label>
+                <label className="text-xs text-muted-foreground mb-1 block">Projeção</label>
                 <Select value={dSillage} onValueChange={setDSillage}>
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue placeholder="—" />
