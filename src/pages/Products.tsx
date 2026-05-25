@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Search, Sparkles, Loader2, Wind } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
@@ -11,12 +11,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 
+type RunMode = "photos" | "notes" | null;
+
 export default function Products() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
-  const [running, setRunning] = useState(false);
+  const [runMode, setRunMode] = useState<RunMode>(null);
   const [progress, setProgress] = useState({
     done: 0,
     total: 0,
@@ -43,16 +45,15 @@ export default function Products() {
       (p.brand && p.brand.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const refreshAllPhotos = async () => {
-    if (!products || products.length === 0 || !user) return;
-    setRunning(true);
+  const runPhotos = async () => {
+    if (!products?.length || !user) return;
+    setRunMode("photos");
     setProgress({ done: 0, total: products.length, ok: 0, failed: [] });
     for (const p of products) {
       try {
-        const { data, error } = await supabase.functions.invoke(
-          "fetch-perfume-image",
-          { body: { productId: p.id, name: p.name, brand: p.brand, userId: user.id } }
-        );
+        const { data, error } = await supabase.functions.invoke("fetch-perfume-image", {
+          body: { productId: p.id, name: p.name, brand: p.brand, userId: user.id },
+        });
         if (error || !data?.ok) {
           setProgress((s) => ({ ...s, done: s.done + 1, failed: [...s.failed, p.name] }));
         } else {
@@ -64,8 +65,34 @@ export default function Products() {
       await new Promise((r) => setTimeout(r, 400));
     }
     await queryClient.invalidateQueries({ queryKey: ["products"] });
-    toast.success("Atualização de fotos concluída");
+    toast.success("Fotos atualizadas!");
   };
+
+  const runNotes = async () => {
+    if (!products?.length || !user) return;
+    setRunMode("notes");
+    setProgress({ done: 0, total: products.length, ok: 0, failed: [] });
+    for (const p of products) {
+      try {
+        const { data, error } = await supabase.functions.invoke("fetch-perfume-details", {
+          body: { productId: p.id, name: p.name, userId: user.id },
+        });
+        if (error || !data?.ok) {
+          setProgress((s) => ({ ...s, done: s.done + 1, failed: [...s.failed, p.name] }));
+        } else {
+          setProgress((s) => ({ ...s, done: s.done + 1, ok: s.ok + 1 }));
+        }
+      } catch {
+        setProgress((s) => ({ ...s, done: s.done + 1, failed: [...s.failed, p.name] }));
+      }
+      await new Promise((r) => setTimeout(r, 600));
+    }
+    await queryClient.invalidateQueries({ queryKey: ["products"] });
+    toast.success("Notas e marcas atualizadas!");
+  };
+
+  const isRunning = runMode !== null;
+  const isDone = progress.done >= progress.total && progress.total > 0;
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto pb-24">
@@ -74,14 +101,18 @@ export default function Products() {
           <h1 className="text-xl font-bold text-foreground">Produtos</h1>
           <p className="text-xs text-muted-foreground">{products?.length ?? 0} itens no catálogo</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={refreshAllPhotos} disabled={running} className="gap-1.5 text-xs h-8">
-            <Sparkles className="w-3.5 h-3.5" /> Fotos IA
-          </Button>
-          <Button size="sm" onClick={() => navigate("/products/new")} className="gap-1.5 text-xs h-8">
-            <Plus className="w-3.5 h-3.5" /> Novo
-          </Button>
-        </div>
+        <Button size="sm" onClick={() => navigate("/products/new")} className="gap-1.5 text-xs h-8">
+          <Plus className="w-3.5 h-3.5" /> Novo
+        </Button>
+      </div>
+
+      <div className="fade-in flex gap-2">
+        <Button variant="outline" size="sm" onClick={runPhotos} disabled={isRunning} className="flex-1 gap-1.5 text-xs h-9">
+          <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Fotos IA
+        </Button>
+        <Button variant="outline" size="sm" onClick={runNotes} disabled={isRunning} className="flex-1 gap-1.5 text-xs h-9">
+          <Wind className="w-3.5 h-3.5 text-blue-500" /> Notas + Marca IA
+        </Button>
       </div>
 
       <div className="fade-in relative">
@@ -117,12 +148,17 @@ export default function Products() {
                 isEmpty ? "border-red-200" : isLow ? "border-amber-200" : "border-border/60"
               }`}
             >
-              <div className="w-full aspect-square bg-secondary flex items-center justify-center overflow-hidden">
+              <div className="w-full aspect-square bg-secondary flex items-center justify-center overflow-hidden relative">
                 {product.image_url ? (
                   <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-4xl font-bold text-muted-foreground/20">
                     {product.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+                {product.gender && (
+                  <span className="absolute top-1.5 left-1.5 text-[9px] font-bold bg-black/40 text-white px-1.5 py-0.5 rounded-full backdrop-blur-sm">
+                    {product.gender}
                   </span>
                 )}
               </div>
@@ -141,7 +177,16 @@ export default function Products() {
 
                 <p className="text-[10px] text-muted-foreground truncate">
                   {product.brand || "Sem marca"}
+                  {product.concentration ? ` · ${product.concentration}` : ""}
                 </p>
+
+                {(() => {
+                  const notes = product.fragrance_notes as { top?: string[] } | null;
+                  const topNote = notes?.top?.[0];
+                  return topNote ? (
+                    <p className="text-[10px] text-blue-500 truncate">🌿 {topNote}</p>
+                  ) : null;
+                })()}
 
                 <div className="space-y-0.5">
                   <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
@@ -169,20 +214,22 @@ export default function Products() {
       )}
 
       <Dialog
-        open={running}
+        open={isRunning}
         onOpenChange={(o) => {
-          if (!o && progress.done >= progress.total) setRunning(false);
+          if (!o && isDone) setRunMode(null);
         }}
       >
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {progress.done < progress.total ? (
+              {!isDone ? (
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              ) : runMode === "photos" ? (
+                <Sparkles className="w-4 h-4 text-amber-500" />
               ) : (
-                <Sparkles className="w-4 h-4 text-primary" />
+                <Wind className="w-4 h-4 text-blue-500" />
               )}
-              Atualizando fotos
+              {runMode === "photos" ? "Atualizando fotos" : "Buscando notas e marcas"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
@@ -197,15 +244,15 @@ export default function Products() {
             <p className="text-sm text-muted-foreground text-center">
               {progress.done} de {progress.total} •{" "}
               <span className="text-emerald-600 font-medium">
-                {progress.ok} atualizadas
+                {progress.ok} {runMode === "photos" ? "atualizadas" : "encontradas"}
               </span>
             </p>
-            {progress.done >= progress.total && (
+            {isDone && (
               <>
                 {progress.failed.length > 0 && (
                   <div className="text-xs text-muted-foreground bg-secondary rounded-xl p-3">
                     <p className="font-semibold mb-1">
-                      Não encontradas ({progress.failed.length}):
+                      Não encontrados ({progress.failed.length}):
                     </p>
                     <ul className="space-y-0.5">
                       {progress.failed.map((n, i) => (
@@ -216,7 +263,7 @@ export default function Products() {
                 )}
                 <Button
                   className="w-full"
-                  onClick={() => setRunning(false)}
+                  onClick={() => setRunMode(null)}
                 >
                   Fechar
                 </Button>
