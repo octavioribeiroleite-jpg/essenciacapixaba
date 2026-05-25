@@ -252,7 +252,7 @@ export default function Reports() {
   });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:max-w-7xl lg:mx-auto">
       <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
         <BarChart3 className="h-5 w-5 text-primary" />
         Relatórios
