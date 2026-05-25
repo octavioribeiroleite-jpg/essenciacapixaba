@@ -69,30 +69,17 @@ export default function Products() {
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto pb-24">
-      <div className="fade-in flex items-center justify-between pt-2">
+      <div className="fade-in pt-2 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Produtos</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {products?.length ?? 0} itens no catálogo
-          </p>
+          <h1 className="text-xl font-bold text-foreground">Produtos</h1>
+          <p className="text-xs text-muted-foreground">{products?.length ?? 0} itens no catálogo</p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={refreshAllPhotos}
-            className="gap-1.5 text-xs"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Fotos IA
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={refreshAllPhotos} disabled={running} className="gap-1.5 text-xs h-8">
+            <Sparkles className="w-3.5 h-3.5" /> Fotos IA
           </Button>
-          <Button
-            size="sm"
-            onClick={() => navigate("/products/new")}
-            className="gap-1.5 text-xs"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Novo
+          <Button size="sm" onClick={() => navigate("/products/new")} className="gap-1.5 text-xs h-8">
+            <Plus className="w-3.5 h-3.5" /> Novo
           </Button>
         </div>
       </div>
@@ -103,12 +90,12 @@ export default function Products() {
           placeholder="Buscar por nome ou marca..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 bg-secondary border-border rounded-xl"
+          className="pl-9 bg-secondary border-border rounded-xl text-sm h-9"
         />
       </div>
 
-      <div className="space-y-2">
-        {filtered?.map((product, i) => {
+      <div className="grid grid-cols-2 gap-3">
+        {filtered?.map((product) => {
           const current = Number(product.current_ml);
           const total = Number(product.total_ml) || ML_PER_FRASCO * 5;
           const frascos = current / ML_PER_FRASCO;
@@ -116,88 +103,70 @@ export default function Products() {
           const isEmpty = current <= 0;
           const pct = Math.max(0, Math.min(100, (current / total) * 100));
 
-          const barColor = isEmpty
-            ? "bg-red-400"
-            : isLow
-            ? "bg-amber-400"
-            : "bg-emerald-500";
-
-          const badge = isEmpty ? (
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600">
-              Esgotado
-            </span>
-          ) : isLow ? (
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-600">
-              Baixo
-            </span>
-          ) : null;
+          const statusLabel = isEmpty ? "Esgotado" : isLow ? "Baixo" : null;
+          const statusColor = isEmpty
+            ? "bg-red-100 text-red-600"
+            : "bg-amber-100 text-amber-600";
+          const barColor = isEmpty ? "bg-red-400" : isLow ? "bg-amber-400" : "bg-emerald-500";
 
           return (
             <button
               key={product.id}
               onClick={() => navigate(`/products/${product.id}`)}
-              className={`fade-in fade-in-delay-${Math.min(i + 1, 4)} hover-lift w-full flex items-center gap-3 bg-card border rounded-2xl p-3 transition-colors text-left ${
-                isLow
-                  ? "border-amber-300/60 hover:border-amber-400/80"
-                  : "border-border/60 hover:border-primary/50"
+              className={`text-left flex flex-col bg-card rounded-2xl border overflow-hidden transition-all hover:shadow-md active:scale-95 ${
+                isEmpty ? "border-red-200" : isLow ? "border-amber-200" : "border-border/60"
               }`}
             >
-              {product.image_url ? (
-                <img
-                  src={product.image_url}
-                  alt={product.name}
-                  className="w-14 h-14 rounded-xl object-cover flex-shrink-0 bg-secondary"
-                />
-              ) : (
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0">
-                  <span className="text-xl font-bold text-primary">
+              <div className="w-full aspect-square bg-secondary flex items-center justify-center overflow-hidden">
+                {product.image_url ? (
+                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-4xl font-bold text-muted-foreground/20">
                     {product.name.charAt(0).toUpperCase()}
                   </span>
-                </div>
-              )}
+                )}
+              </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <p className="text-sm font-semibold text-foreground truncate">
+              <div className="p-2.5 flex flex-col gap-1.5">
+                <div className="flex items-start justify-between gap-1">
+                  <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2 flex-1">
                     {product.name}
                   </p>
-                  {badge}
+                  {statusLabel && (
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${statusColor}`}>
+                      {statusLabel}
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mb-2">
+
+                <p className="text-[10px] text-muted-foreground truncate">
                   {product.brand || "Sem marca"}
                 </p>
 
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${barColor}`}
-                      style={{ width: `${pct}%` }}
-                    />
+                    <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">
-                      {formatFrascos(current)}{" "}
-                      {frascos === 1 ? "frasco" : "frascos"}
-                    </span>
-                    <span className="text-[10px] font-semibold text-primary">
-                      R$ {perFrasco(product.sale_price_per_ml).toFixed(2)}/fr
-                    </span>
-                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    {formatFrascos(current)} {frascos === 1 ? "frasco" : "frascos"}
+                  </p>
                 </div>
+
+                <p className="text-xs font-bold text-primary">
+                  R$ {perFrasco(product.sale_price_per_ml).toFixed(2)}/fr
+                </p>
               </div>
             </button>
           );
         })}
-
-        {filtered?.length === 0 && (
-          <div className="fade-in text-center py-16 space-y-2">
-            <p className="text-3xl">🔍</p>
-            <p className="text-sm text-muted-foreground">
-              Nenhum produto encontrado.
-            </p>
-          </div>
-        )}
       </div>
+
+      {filtered?.length === 0 && (
+        <div className="text-center py-12 space-y-2">
+          <p className="text-3xl">🔍</p>
+          <p className="text-sm text-muted-foreground">Nenhum produto encontrado.</p>
+        </div>
+      )}
 
       <Dialog
         open={running}
