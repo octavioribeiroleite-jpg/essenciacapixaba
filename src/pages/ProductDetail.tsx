@@ -468,14 +468,40 @@ export default function ProductDetail() {
         const hasSpecs = !!(p?.description || p?.concentration || p?.gender || p?.longevity || p?.sillage);
         return (
           <div className="space-y-3">
-            {hasSpecs && (
-              <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+            <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <Info className="w-4 h-4 text-primary" />
                   <h3 className="text-sm font-semibold">Sobre o Perfume</h3>
                 </div>
-                {p.description && (
-                  <p className="text-xs text-muted-foreground leading-relaxed">{p.description}</p>
+                {p.description ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground leading-relaxed">{p.description}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => generateDescriptionMutation.mutate()}
+                      disabled={generateDescriptionMutation.isPending}
+                      className="gap-2 text-xs"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      {generateDescriptionMutation.isPending ? "Gerando..." : "Regerar descrição"}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 py-4 text-center border border-dashed border-border rounded-xl">
+                    <Sparkles className="w-5 h-5 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">Nenhuma descrição ainda.</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => generateDescriptionMutation.mutate()}
+                      disabled={generateDescriptionMutation.isPending}
+                      className="gap-2 text-xs"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      {generateDescriptionMutation.isPending ? "Gerando..." : "Gerar descrição IA"}
+                    </Button>
+                  </div>
                 )}
                 <div className="grid grid-cols-2 gap-2">
                   {p.concentration && (
@@ -515,8 +541,7 @@ export default function ProductDetail() {
                     </div>
                   )}
                 </div>
-              </div>
-            )}
+            </div>
 
             {hasNotes && (
               <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
