@@ -648,20 +648,27 @@ export default function ProductDetail() {
               </div>
             )}
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full gap-2 text-xs"
-              disabled={detailsMutation.isPending}
-              onClick={() => detailsMutation.mutate()}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              {detailsMutation.isPending
-                ? "Buscando com IA..."
-                : hasNotes || hasSpecs
-                  ? "Atualizar notas e detalhes"
-                  : "Buscar notas e detalhes com IA"}
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-xs"
+                disabled={detailsMutation.isPending}
+                onClick={() => detailsMutation.mutate()}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {detailsMutation.isPending ? "Buscando..." : "IA"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-xs"
+                onClick={openDetails}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Editar manualmente
+              </Button>
+            </div>
           </div>
         );
       })()}
