@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
 
     const systemPrompt =
       "Você é um especialista em perfumaria árabe e mainstream. Retorne dados precisos sobre o perfume informado. Se não tiver certeza de algum campo, devolva null/array vazio.";
-    const userPrompt = `Perfume: "${name}". Devolva marca oficial, descrição curta (PT-BR, 2 frases), concentração, gênero, fixação, sillage e notas olfativas (topo, coração, base).`;
+    const userPrompt = `Perfume árabe/importado vendido no Brasil: "${name}". Identifique a marca correta (ex: Lattafa, Armaf, Rasasi, Afnan, Al Wataniah, Paris Corner, Ard Al Zaafaran, Maison Alhambra, etc). Retorne concentração real (EDP/EDT/Parfum), gênero, fixação, sillage e notas olfativas reais (topo, coração, base). Descrição curta em PT-BR com 2 frases elegantes e precisas. Se não tiver certeza de algum campo, retorne null.`;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
