@@ -439,10 +439,6 @@ export default function ProductDetail() {
         </CardContent>
       </Card>
 
-      {/* Sales History */}
-      <div>
-        <h2 className="text-sm font-medium text-foreground mb-3">Histórico de Vendas</h2>
-      </div>
       {/* Perfume details cards */}
       {(() => {
         const p: any = product;
@@ -571,8 +567,9 @@ export default function ProductDetail() {
         );
       })()}
 
+      {/* Sales History */}
       <div>
-        <h2 className="text-sm font-medium text-foreground mb-3">Histórico de Vendas (continuação)</h2>
+        <h2 className="text-sm font-medium text-foreground mb-3">Histórico de Vendas</h2>
         {sales?.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma venda registrada.</p>}
         <div className="space-y-2">
           {sales?.map((sale) => (
