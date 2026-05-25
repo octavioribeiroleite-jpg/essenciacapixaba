@@ -39,6 +39,16 @@ const sillageToScore = (v?: string | null) => {
   return v;
 };
 
+const longevityToScore = (v?: string | null) => {
+  if (!v) return null;
+  const s = v.toLowerCase();
+  if (s.startsWith("muito alt")) return "4/4";
+  if (s.startsWith("alt")) return "3/4";
+  if (s.startsWith("méd") || s.startsWith("med")) return "2/4";
+  if (s.startsWith("baix")) return "1/4";
+  return v;
+};
+
 const QUICK_QTYS = [1, 2, 3, 5];
 
 export default function ProductDetail() {
