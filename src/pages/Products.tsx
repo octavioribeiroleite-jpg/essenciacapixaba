@@ -95,7 +95,7 @@ export default function Products() {
   const isDone = progress.done >= progress.total && progress.total > 0;
 
   return (
-    <div className="p-4 space-y-4 max-w-lg mx-auto pb-24">
+    <div className="p-4 lg:p-0 space-y-4 max-w-lg lg:max-w-7xl mx-auto pb-24 lg:pb-8">
       <div className="fade-in pt-2 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-foreground">Produtos</h1>
@@ -147,7 +147,7 @@ export default function Products() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:hidden">
         {filtered?.map((product) => {
           const current = Number(product.current_ml);
           const total = Number(product.total_ml) || ML_PER_FRASCO * 5;
@@ -226,6 +226,84 @@ export default function Products() {
             </button>
           );
         })}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden lg:block rounded-2xl border border-border/60 bg-card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary/60 text-muted-foreground">
+            <tr className="text-left">
+              <th className="py-3 px-4 font-medium w-16">Imagem</th>
+              <th className="py-3 px-4 font-medium">Nome</th>
+              <th className="py-3 px-4 font-medium">Marca</th>
+              <th className="py-3 px-4 font-medium text-right">Frascos</th>
+              <th className="py-3 px-4 font-medium text-right">Custo</th>
+              <th className="py-3 px-4 font-medium text-right">Venda</th>
+              <th className="py-3 px-4 font-medium text-right">Lucro</th>
+              <th className="py-3 px-4 font-medium text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered?.map((product) => {
+              const current = Number(product.current_ml);
+              const frascos = current / ML_PER_FRASCO;
+              const isLow = frascos < 2;
+              const isEmpty = current <= 0;
+              const cost = perFrasco(product.cost_per_ml);
+              const sale = perFrasco(product.sale_price_per_ml);
+              const profit = sale - cost;
+              return (
+                <tr
+                  key={product.id}
+                  onClick={() => navigate(`/products/${product.id}`)}
+                  className="border-t border-border/50 hover:bg-secondary/40 cursor-pointer transition-colors"
+                >
+                  <td className="py-2 px-4">
+                    <div className="w-12 h-12 rounded-lg bg-secondary overflow-hidden flex items-center justify-center">
+                      {product.image_url ? (
+                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-sm font-bold text-muted-foreground/40">
+                          {product.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-2 px-4 font-medium text-foreground">{product.name}</td>
+                  <td className="py-2 px-4 text-muted-foreground">{product.brand || "—"}</td>
+                  <td className="py-2 px-4 text-right">
+                    <span
+                      className={
+                        isEmpty
+                          ? "text-red-600 font-medium"
+                          : isLow
+                            ? "text-amber-600 font-medium"
+                            : "text-foreground"
+                      }
+                    >
+                      {formatFrascos(current)}
+                    </span>
+                  </td>
+                  <td className="py-2 px-4 text-right text-muted-foreground">R$ {cost.toFixed(2)}</td>
+                  <td className="py-2 px-4 text-right text-foreground">R$ {sale.toFixed(2)}</td>
+                  <td className="py-2 px-4 text-right text-emerald-600 font-medium">R$ {profit.toFixed(2)}</td>
+                  <td className="py-2 px-4 text-right">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/products/${product.id}`);
+                      }}
+                    >
+                      Ver
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       {filtered?.length === 0 && (
