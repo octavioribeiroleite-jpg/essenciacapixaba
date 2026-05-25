@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, QrCode, Download, Trash2, Plus, ArrowUp, ArrowDown, Settings2, History, Pencil, Upload, Wind, Droplets, Clock, Waves, User as UserIcon, Info, Sparkles } from "lucide-react";
+import { ArrowLeft, QrCode, Download, Trash2, Plus, ArrowUp, ArrowDown, Settings2, History, Pencil, Upload, Wind, Droplets, Clock, Waves, User as UserIcon, Info, Sparkles, CalendarClock } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
@@ -80,6 +80,7 @@ export default function ProductDetail() {
   const [dTop, setDTop] = useState("");
   const [dHeart, setDHeart] = useState("");
   const [dBase, setDBase] = useState("");
+  const [dOccasions, setDOccasions] = useState<string[]>([]);
   const qrRef = useRef<HTMLCanvasElement>(null);
 
   const { data: product } = useQuery({
@@ -317,6 +318,7 @@ export default function ProductDetail() {
     setDTop((notes.top ?? []).join(", "));
     setDHeart((notes.heart ?? []).join(", "));
     setDBase((notes.base ?? []).join(", "));
+    setDOccasions(Array.isArray(p.occasions) ? p.occasions : []);
     setDetailsOpen(true);
   };
 
@@ -338,6 +340,7 @@ export default function ProductDetail() {
             heart: toArr(dHeart),
             base: toArr(dBase),
           },
+          occasions: dOccasions,
         })
         .eq("id", product.id);
       if (error) throw error;
