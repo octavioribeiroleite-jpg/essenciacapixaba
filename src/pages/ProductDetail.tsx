@@ -191,7 +191,7 @@ export default function ProductDetail() {
     if (!product) return;
     setEditName(product.name);
     setEditBrand(product.brand || "");
-    setEditTotalMl(String(ML_PER_FRASCO));
+    setEditTotalMl(String(product.total_ml ?? ML_PER_FRASCO));
     setEditTotalCost(perFrasco(product.cost_per_ml).toFixed(2));
     setEditTotalSale(perFrasco(product.sale_price_per_ml).toFixed(2));
     setEditImage(null);

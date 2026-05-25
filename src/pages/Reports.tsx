@@ -223,6 +223,13 @@ export default function Reports() {
       const { error: dErr } = await supabase.from("sales").delete().eq("id", sale.id);
       if (dErr) throw dErr;
 
+      // Remove o movimento original de venda para não duplicar histórico
+      await supabase
+        .from("stock_movements")
+        .delete()
+        .eq("sale_id", sale.id)
+        .eq("type", "sale");
+
       await logMovement({
         userId: user.id,
         productId: sale.product_id,
