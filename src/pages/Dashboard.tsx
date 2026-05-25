@@ -132,7 +132,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-4 space-y-4 max-w-lg mx-auto pb-24">
+    <div className="p-4 lg:p-0 space-y-4 max-w-lg lg:max-w-7xl mx-auto pb-24 lg:pb-8">
       <div className="fade-in pt-2">
         <p className="text-xs text-muted-foreground capitalize">
           {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
@@ -153,7 +153,7 @@ export default function Dashboard() {
         {updateAllMutation.isPending ? "Atualizando catálogo..." : "✨ Atualizar tudo com IA"}
       </Button>
 
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-4">
         {stats.map((stat, i) => {
           const Icon = stat.icon;
           const isMoney = stat.value.startsWith("R$");
