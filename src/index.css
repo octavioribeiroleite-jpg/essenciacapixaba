@@ -4,37 +4,26 @@
 
 @layer base {
   :root {
-    /* Light theme — warm off-white with gold accents */
     --background: 40 30% 98%;
     --foreground: 30 25% 12%;
-
     --card: 0 0% 100%;
     --card-foreground: 30 25% 12%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 30 25% 12%;
-
     --primary: 38 70% 45%;
     --primary-foreground: 40 30% 98%;
-
     --secondary: 40 25% 94%;
     --secondary-foreground: 30 25% 12%;
-
     --muted: 40 20% 95%;
     --muted-foreground: 30 10% 40%;
-
     --accent: 38 70% 45%;
     --accent-foreground: 40 30% 98%;
-
     --destructive: 0 72% 48%;
     --destructive-foreground: 40 30% 98%;
-
     --border: 36 20% 88%;
     --input: 36 20% 88%;
     --ring: 38 70% 45%;
-
     --radius: 0.75rem;
-
     --sidebar-background: 40 30% 97%;
     --sidebar-foreground: 30 25% 12%;
     --sidebar-primary: 38 70% 45%;
@@ -43,7 +32,6 @@
     --sidebar-accent-foreground: 30 25% 12%;
     --sidebar-border: 36 20% 88%;
     --sidebar-ring: 38 70% 45%;
-
     --success: 142 60% 38%;
     --success-foreground: 40 30% 98%;
     --warning: 38 92% 45%;
@@ -55,7 +43,6 @@
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, sans-serif;
@@ -66,9 +53,7 @@
   .glass-card {
     @apply bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl;
   }
-}
 
-@layer utilities {
   ::-webkit-scrollbar {
     width: 4px;
   }
@@ -81,10 +66,55 @@
   }
 
   .fade-in {
-    animation: fadeIn 0.25s ease-out;
+    animation: fadeIn 0.3s ease-out both;
   }
+  .fade-in-up {
+    animation: fadeInUp 0.4s ease-out both;
+  }
+  .fade-in-delay-1 { animation-delay: 0.05s; }
+  .fade-in-delay-2 { animation-delay: 0.10s; }
+  .fade-in-delay-3 { animation-delay: 0.15s; }
+  .fade-in-delay-4 { animation-delay: 0.20s; }
+
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .pulse-soft {
+    animation: pulseSoft 2s ease-in-out infinite;
+  }
+  @keyframes pulseSoft {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.6; }
+  }
+
+  .stat-gold {
+    background: linear-gradient(135deg, hsl(38 70% 45% / 0.12), hsl(38 70% 45% / 0.04));
+    border-color: hsl(38 70% 45% / 0.25);
+  }
+  .stat-sky {
+    background: linear-gradient(135deg, hsl(200 80% 55% / 0.12), hsl(200 80% 55% / 0.04));
+    border-color: hsl(200 80% 55% / 0.25);
+  }
+  .stat-emerald {
+    background: linear-gradient(135deg, hsl(160 60% 40% / 0.12), hsl(160 60% 40% / 0.04));
+    border-color: hsl(160 60% 40% / 0.25);
+  }
+  .stat-green {
+    background: linear-gradient(135deg, hsl(142 60% 38% / 0.12), hsl(142 60% 38% / 0.04));
+    border-color: hsl(142 60% 38% / 0.25);
+  }
+
+  .hover-lift {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px hsl(38 70% 45% / 0.10);
   }
 }
