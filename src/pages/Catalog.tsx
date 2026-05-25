@@ -15,7 +15,7 @@ const publicSupabase = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } }
 );
 
-const WHATSAPP_NUMBER = "5527999999999"; // TODO: substituir pelo número real
+const WHATSAPP_NUMBER = "5527988767528";
 
 type Notes = { top?: string[]; heart?: string[]; base?: string[] };
 
