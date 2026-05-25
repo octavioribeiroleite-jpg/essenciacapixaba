@@ -88,9 +88,9 @@ export default function AppLayout() {
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors duration-150 border-l-[3px] border-transparent",
                   isActive
-                    ? "bg-primary/10 text-primary font-medium"
+                    ? "bg-primary/10 text-primary font-medium border-primary"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )
               }

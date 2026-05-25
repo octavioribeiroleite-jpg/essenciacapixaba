@@ -424,7 +424,7 @@ export default function ProductDetail() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:max-w-5xl lg:mx-auto">
       <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> Voltar
       </button>
