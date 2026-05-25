@@ -17,6 +17,15 @@ const publicSupabase = createClient(
 
 const WHATSAPP_NUMBER = "5527988767528";
 
+const OCCASION_GROUPS: { label: string; items: string[] }[] = [
+  { label: "Período do dia", items: ["Dia", "Noite"] },
+  { label: "Estação", items: ["Verão", "Inverno", "Primavera", "Outono"] },
+  {
+    label: "Ocasião",
+    items: ["Trabalho", "Casual", "Pós-banho", "Encontro", "Festa", "Formal", "Especial"],
+  },
+];
+
 type Notes = { top?: string[]; heart?: string[]; base?: string[] };
 
 type Product = {
@@ -382,16 +391,25 @@ export default function Catalog() {
                       <CalendarClock className="w-3.5 h-3.5 text-primary" />
                       Quando Usar
                     </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selected.occasions.map((o) => (
-                        <span
-                          key={o}
-                          className="text-[11px] bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full"
-                        >
-                          {o}
-                        </span>
-                      ))}
-                    </div>
+                    {OCCASION_GROUPS.map((g) => {
+                      const sel = (selected.occasions ?? []).filter((o) => g.items.includes(o));
+                      if (sel.length === 0) return null;
+                      return (
+                        <div key={g.label}>
+                          <p className="text-[10px] text-muted-foreground mb-1">{g.label}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {sel.map((o) => (
+                              <span
+                                key={o}
+                                className="text-[11px] bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full"
+                              >
+                                {o}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 

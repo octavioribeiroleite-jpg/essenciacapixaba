@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
 
     const systemPrompt =
       "Você é um especialista em perfumaria árabe e mainstream com conhecimento profundo de Fragrantica e sites oficiais das marcas. REGRA ABSOLUTA: NUNCA invente dados. Se você não tem CERTEZA ABSOLUTA da existência do perfume ou de qualquer campo específico (marca, notas, concentração, fixação, sillage), retorne null ou array vazio para aquele campo. É infinitamente melhor retornar null do que chutar. Use APENAS informação verificável de fontes reais. Defina 'confidence' como 'baixa' se houver qualquer dúvida sobre a existência ou identidade do perfume.";
-    const userPrompt = `Perfume árabe/importado vendido no Brasil: "${name}". Identifique apenas se tiver CERTEZA. Marcas comuns nesse mercado: Lattafa, Armaf, Rasasi, Afnan, Al Wataniah, Paris Corner, Ard Al Zaafaran, Maison Alhambra, Asdaaf, Fragrance World, Khadlaj, Swiss Arabian. Retorne concentração real (EDP/EDT/Parfum), gênero, fixação, sillage e notas olfativas REAIS (topo, coração, base) conforme Fragrantica/marca oficial. Descrição curta em PT-BR com 2 frases factuais (sem adjetivos inventados). Também retorne 'occasions': lista das ocasiões IDEAIS de uso desse perfume (escolha apenas as que realmente combinam com o perfil olfativo, entre: "Dia", "Noite", "Verão", "Inverno", "Outono", "Primavera", "Trabalho", "Casual", "Esporte", "Encontro", "Balada", "Festa", "Formal", "Especial"). Para QUALQUER campo em que tenha dúvida, retorne null/array vazio. Defina confidence honestamente.`;
+    const userPrompt = `Perfume árabe/importado vendido no Brasil: "${name}". Identifique apenas se tiver CERTEZA. Marcas comuns nesse mercado: Lattafa, Armaf, Rasasi, Afnan, Al Wataniah, Paris Corner, Ard Al Zaafaran, Maison Alhambra, Asdaaf, Fragrance World, Khadlaj, Swiss Arabian. Retorne concentração real (EDP/EDT/Parfum), gênero, fixação, sillage e notas olfativas REAIS (topo, coração, base) conforme Fragrantica/marca oficial. Descrição curta em PT-BR com 2 frases factuais (sem adjetivos inventados). Também retorne 'occasions': escolha de 4 a 6 itens IDEAIS para o perfil olfativo desse perfume, usando APENAS estes valores: "Dia", "Noite", "Verão", "Inverno", "Primavera", "Outono", "Trabalho", "Casual", "Pós-banho", "Encontro", "Festa", "Formal", "Especial". Combine pelo menos 1 período do dia, 1 a 2 estações e 2 a 3 ocasiões. Para QUALQUER outro campo em que tenha dúvida, retorne null/array vazio. Defina confidence honestamente.`;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -86,12 +86,13 @@ Deno.serve(async (req) => {
                   },
                   occasions: {
                     type: "array",
-                    description: "Ocasiões ideais de uso (clima/momento/ambiente).",
+                    description: "De 4 a 6 ocasiões ideais (clima/momento/ambiente).",
+                    maxItems: 6,
                     items: {
                       type: "string",
                       enum: [
-                        "Dia", "Noite", "Verão", "Inverno", "Outono", "Primavera",
-                        "Trabalho", "Casual", "Esporte", "Encontro", "Balada", "Festa",
+                        "Dia", "Noite", "Verão", "Inverno", "Primavera", "Outono",
+                        "Trabalho", "Casual", "Pós-banho", "Encontro", "Festa",
                         "Formal", "Especial"
                       ],
                     },

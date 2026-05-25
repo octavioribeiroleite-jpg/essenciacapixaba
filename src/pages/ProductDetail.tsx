@@ -51,6 +51,16 @@ const longevityToScore = (v?: string | null) => {
 
 const QUICK_QTYS = [1, 2, 3, 5];
 
+const OCCASION_GROUPS: { label: string; items: string[] }[] = [
+  { label: "Período do dia", items: ["Dia", "Noite"] },
+  { label: "Estação", items: ["Verão", "Inverno", "Primavera", "Outono"] },
+  {
+    label: "Ocasião",
+    items: ["Trabalho", "Casual", "Pós-banho", "Encontro", "Festa", "Formal", "Especial"],
+  },
+];
+const MAX_OCCASIONS = 6;
+
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
@@ -677,16 +687,27 @@ export default function ProductDetail() {
                   <CalendarClock className="w-4 h-4 text-primary" />
                   <h3 className="text-sm font-semibold">Quando Usar</h3>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {p.occasions.map((o: string) => (
-                    <span
-                      key={o}
-                      className="text-[11px] bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full"
-                    >
-                      {o}
-                    </span>
-                  ))}
-                </div>
+                {OCCASION_GROUPS.map((g) => {
+                  const selected = (p.occasions as string[]).filter((o) => g.items.includes(o));
+                  if (selected.length === 0) return null;
+                  return (
+                    <div key={g.label}>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                        {g.label}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selected.map((o) => (
+                          <span
+                            key={o}
+                            className="text-[11px] bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full"
+                          >
+                            {o}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -1059,36 +1080,51 @@ export default function ProductDetail() {
                 placeholder="Ex: Âmbar, Almíscar, Baunilha"
               />
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Quando usar</label>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  "Dia", "Noite", "Verão", "Inverno", "Outono", "Primavera",
-                  "Trabalho", "Casual", "Esporte", "Encontro", "Balada", "Festa",
-                  "Formal", "Especial",
-                ].map((opt) => {
-                  const active = dOccasions.includes(opt);
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() =>
-                        setDOccasions((prev) =>
-                          prev.includes(opt) ? prev.filter((x) => x !== opt) : [...prev, opt]
-                        )
-                      }
-                      className={cn(
-                        "text-[11px] px-2.5 py-1 rounded-full border transition-colors",
-                        active
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-secondary text-muted-foreground border-border hover:border-primary/50"
-                      )}
-                    >
-                      {opt}
-                    </button>
-                  );
-                })}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-muted-foreground">Quando usar</label>
+                <span className="text-[10px] text-muted-foreground">
+                  {dOccasions.length}/{MAX_OCCASIONS}
+                </span>
               </div>
+              {OCCASION_GROUPS.map((g) => (
+                <div key={g.label} className="space-y-1">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    {g.label}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {g.items.map((opt) => {
+                      const active = dOccasions.includes(opt);
+                      const atMax = dOccasions.length >= MAX_OCCASIONS && !active;
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          disabled={atMax}
+                          onClick={() =>
+                            setDOccasions((prev) =>
+                              prev.includes(opt)
+                                ? prev.filter((x) => x !== opt)
+                                : prev.length >= MAX_OCCASIONS
+                                ? prev
+                                : [...prev, opt]
+                            )
+                          }
+                          className={cn(
+                            "text-[11px] px-2.5 py-1 rounded-full border transition-colors",
+                            active
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-secondary text-muted-foreground border-border hover:border-primary/50",
+                            atMax && "opacity-40 cursor-not-allowed"
+                          )}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
             <Button
               className="w-full"
