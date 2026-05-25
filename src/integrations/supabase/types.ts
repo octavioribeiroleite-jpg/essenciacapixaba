@@ -17,39 +17,57 @@ export type Database = {
       products: {
         Row: {
           brand: string | null
+          concentration: string | null
           cost_per_ml: number
           created_at: string
           current_ml: number
+          description: string | null
+          fragrance_notes: Json | null
+          gender: string | null
           id: string
           image_url: string | null
+          longevity: string | null
           name: string
           sale_price_per_ml: number
+          sillage: string | null
           total_ml: number
           updated_at: string
           user_id: string
         }
         Insert: {
           brand?: string | null
+          concentration?: string | null
           cost_per_ml?: number
           created_at?: string
           current_ml?: number
+          description?: string | null
+          fragrance_notes?: Json | null
+          gender?: string | null
           id?: string
           image_url?: string | null
+          longevity?: string | null
           name: string
           sale_price_per_ml?: number
+          sillage?: string | null
           total_ml?: number
           updated_at?: string
           user_id: string
         }
         Update: {
           brand?: string | null
+          concentration?: string | null
           cost_per_ml?: number
           created_at?: string
           current_ml?: number
+          description?: string | null
+          fragrance_notes?: Json | null
+          gender?: string | null
           id?: string
           image_url?: string | null
+          longevity?: string | null
           name?: string
           sale_price_per_ml?: number
+          sillage?: string | null
           total_ml?: number
           updated_at?: string
           user_id?: string
