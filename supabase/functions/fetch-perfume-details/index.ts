@@ -136,6 +136,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    console.log("[fetch-perfume-details] model=openai/gpt-5 name=", name, "confidence=", data.confidence);
+
+    // Se a IA não tem certeza, NÃO grava nada para evitar dados falsos
+    if (data.confidence === "baixa") {
+      return new Response(
+        JSON.stringify({ ok: false, error: "low_confidence", data }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // Não sobrescreve marca se vier vazia
     const update: Record<string, unknown> = {
       description: data.description ?? null,
