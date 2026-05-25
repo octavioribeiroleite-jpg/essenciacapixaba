@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -49,6 +51,15 @@ export default function ProductDetail() {
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [dDescription, setDDescription] = useState("");
+  const [dConcentration, setDConcentration] = useState("");
+  const [dGender, setDGender] = useState("");
+  const [dLongevity, setDLongevity] = useState("");
+  const [dSillage, setDSillage] = useState("");
+  const [dTop, setDTop] = useState("");
+  const [dHeart, setDHeart] = useState("");
+  const [dBase, setDBase] = useState("");
   const qrRef = useRef<HTMLCanvasElement>(null);
 
   const { data: product } = useQuery({
@@ -273,6 +284,52 @@ export default function ProductDetail() {
     },
     onError: (err: any) => toast.error(err?.message ?? "Erro ao gerar descrição"),
    });
+
+  const openDetails = () => {
+    if (!product) return;
+    const p: any = product;
+    const notes = (p.fragrance_notes ?? {}) as { top?: string[]; heart?: string[]; base?: string[] };
+    setDDescription(p.description ?? "");
+    setDConcentration(p.concentration ?? "");
+    setDGender(p.gender ?? "");
+    setDLongevity(p.longevity ?? "");
+    setDSillage(p.sillage ?? "");
+    setDTop((notes.top ?? []).join(", "));
+    setDHeart((notes.heart ?? []).join(", "));
+    setDBase((notes.base ?? []).join(", "));
+    setDetailsOpen(true);
+  };
+
+  const saveDetailsMutation = useMutation({
+    mutationFn: async () => {
+      if (!product) throw new Error("Erro");
+      const toArr = (s: string) =>
+        s.split(",").map((x) => x.trim()).filter(Boolean);
+      const { error } = await supabase
+        .from("products")
+        .update({
+          description: dDescription.trim() || null,
+          concentration: dConcentration.trim() || null,
+          gender: dGender || null,
+          longevity: dLongevity || null,
+          sillage: dSillage || null,
+          fragrance_notes: {
+            top: toArr(dTop),
+            heart: toArr(dHeart),
+            base: toArr(dBase),
+          },
+        })
+        .eq("id", product.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Informações salvas!");
+      setDetailsOpen(false);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   const editMutation = useMutation({
     mutationFn: async () => {
@@ -591,20 +648,27 @@ export default function ProductDetail() {
               </div>
             )}
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full gap-2 text-xs"
-              disabled={detailsMutation.isPending}
-              onClick={() => detailsMutation.mutate()}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              {detailsMutation.isPending
-                ? "Buscando com IA..."
-                : hasNotes || hasSpecs
-                  ? "Atualizar notas e detalhes"
-                  : "Buscar notas e detalhes com IA"}
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-xs"
+                disabled={detailsMutation.isPending}
+                onClick={() => detailsMutation.mutate()}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {detailsMutation.isPending ? "Buscando..." : "IA"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-xs"
+                onClick={openDetails}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Editar manualmente
+              </Button>
+            </div>
           </div>
         );
       })()}
@@ -848,6 +912,118 @@ export default function ProductDetail() {
                 className="hidden"
               />
             </label>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Editar detalhes manualmente */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Editar informações do perfume</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Descrição</label>
+              <Textarea
+                value={dDescription}
+                onChange={(e) => setDDescription(e.target.value)}
+                className="bg-secondary border-border min-h-[80px]"
+                placeholder="Descrição comercial do perfume"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Concentração</label>
+                <Input
+                  value={dConcentration}
+                  onChange={(e) => setDConcentration(e.target.value)}
+                  className="bg-secondary border-border"
+                  placeholder="EDP, EDT..."
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Gênero</label>
+                <Select value={dGender} onValueChange={setDGender}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Masculino">Masculino</SelectItem>
+                    <SelectItem value="Feminino">Feminino</SelectItem>
+                    <SelectItem value="Unissex">Unissex</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Fixação</label>
+                <Select value={dLongevity} onValueChange={setDLongevity}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Baixa">Baixa</SelectItem>
+                    <SelectItem value="Média">Média</SelectItem>
+                    <SelectItem value="Alta">Alta</SelectItem>
+                    <SelectItem value="Muito Alta">Muito Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Sillage</label>
+                <Select value={dSillage} onValueChange={setDSillage}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Suave">Suave</SelectItem>
+                    <SelectItem value="Moderado">Moderado</SelectItem>
+                    <SelectItem value="Forte">Forte</SelectItem>
+                    <SelectItem value="Enorme">Enorme</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Notas de topo <span className="opacity-60">(separadas por vírgula)</span>
+              </label>
+              <Input
+                value={dTop}
+                onChange={(e) => setDTop(e.target.value)}
+                className="bg-secondary border-border"
+                placeholder="Ex: Bergamota, Limão, Pera"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Notas de coração <span className="opacity-60">(separadas por vírgula)</span>
+              </label>
+              <Input
+                value={dHeart}
+                onChange={(e) => setDHeart(e.target.value)}
+                className="bg-secondary border-border"
+                placeholder="Ex: Rosa, Jasmim"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Notas de base <span className="opacity-60">(separadas por vírgula)</span>
+              </label>
+              <Input
+                value={dBase}
+                onChange={(e) => setDBase(e.target.value)}
+                className="bg-secondary border-border"
+                placeholder="Ex: Âmbar, Almíscar, Baunilha"
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={saveDetailsMutation.isPending}
+              onClick={() => saveDetailsMutation.mutate()}
+            >
+              {saveDetailsMutation.isPending ? "Salvando..." : "Salvar informações"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
