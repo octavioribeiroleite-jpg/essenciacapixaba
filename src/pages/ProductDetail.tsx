@@ -285,6 +285,52 @@ export default function ProductDetail() {
     onError: (err: any) => toast.error(err?.message ?? "Erro ao gerar descrição"),
    });
 
+  const openDetails = () => {
+    if (!product) return;
+    const p: any = product;
+    const notes = (p.fragrance_notes ?? {}) as { top?: string[]; heart?: string[]; base?: string[] };
+    setDDescription(p.description ?? "");
+    setDConcentration(p.concentration ?? "");
+    setDGender(p.gender ?? "");
+    setDLongevity(p.longevity ?? "");
+    setDSillage(p.sillage ?? "");
+    setDTop((notes.top ?? []).join(", "));
+    setDHeart((notes.heart ?? []).join(", "));
+    setDBase((notes.base ?? []).join(", "));
+    setDetailsOpen(true);
+  };
+
+  const saveDetailsMutation = useMutation({
+    mutationFn: async () => {
+      if (!product) throw new Error("Erro");
+      const toArr = (s: string) =>
+        s.split(",").map((x) => x.trim()).filter(Boolean);
+      const { error } = await supabase
+        .from("products")
+        .update({
+          description: dDescription.trim() || null,
+          concentration: dConcentration.trim() || null,
+          gender: dGender || null,
+          longevity: dLongevity || null,
+          sillage: dSillage || null,
+          fragrance_notes: {
+            top: toArr(dTop),
+            heart: toArr(dHeart),
+            base: toArr(dBase),
+          },
+        })
+        .eq("id", product.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Informações salvas!");
+      setDetailsOpen(false);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const editMutation = useMutation({
     mutationFn: async () => {
       if (!product || !user) throw new Error("Erro");
