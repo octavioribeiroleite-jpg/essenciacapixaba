@@ -314,7 +314,7 @@ export default function Catalog() {
                       { label: "Concentração", value: selected.concentration, Icon: Droplet },
                       { label: "Gênero", value: selected.gender, Icon: User },
                       { label: "Fixação", value: selected.longevity, Icon: Clock },
-                      { label: "Sillage", value: selected.sillage, Icon: Wind },
+                      { label: "Projeção", value: selected.sillage, Icon: Wind },
                     ]
                       .filter((s) => s.value)
                       .map(({ label, value, Icon }) => (
