@@ -671,6 +671,25 @@ export default function ProductDetail() {
               </div>
             )}
 
+            {Array.isArray(p.occasions) && p.occasions.length > 0 && (
+              <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <CalendarClock className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold">Quando Usar</h3>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {p.occasions.map((o: string) => (
+                    <span
+                      key={o}
+                      className="text-[11px] bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full"
+                    >
+                      {o}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
