@@ -39,6 +39,16 @@ const sillageToScore = (v?: string | null) => {
   return v;
 };
 
+const longevityToScore = (v?: string | null) => {
+  if (!v) return null;
+  const s = v.toLowerCase();
+  if (s.startsWith("muito alt")) return "4/4";
+  if (s.startsWith("alt")) return "3/4";
+  if (s.startsWith("méd") || s.startsWith("med")) return "2/4";
+  if (s.startsWith("baix")) return "1/4";
+  return v;
+};
+
 const QUICK_QTYS = [1, 2, 3, 5];
 
 export default function ProductDetail() {
@@ -594,7 +604,7 @@ export default function ProductDetail() {
                       <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
                       <div>
                         <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Fixação</p>
-                        <p className="text-xs font-semibold">{p.longevity}</p>
+                        <p className="text-xs font-semibold">{longevityToScore(p.longevity)}</p>
                       </div>
                     </div>
                   )}
@@ -972,10 +982,10 @@ export default function ProductDetail() {
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Baixa">Baixa</SelectItem>
-                    <SelectItem value="Média">Média</SelectItem>
-                    <SelectItem value="Alta">Alta</SelectItem>
-                    <SelectItem value="Muito Alta">Muito Alta</SelectItem>
+                    <SelectItem value="Baixa">1/4 — Baixa</SelectItem>
+                    <SelectItem value="Média">2/4 — Média</SelectItem>
+                    <SelectItem value="Alta">3/4 — Alta</SelectItem>
+                    <SelectItem value="Muito Alta">4/4 — Muito Alta</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
