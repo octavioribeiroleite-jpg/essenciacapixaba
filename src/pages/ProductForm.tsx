@@ -15,6 +15,19 @@ import { ML_PER_FRASCO, normalizeName } from "@/lib/frascos";
 
 const FIXED_PROFIT = 100; // R$ de lucro por frasco
 
+const MARCAS_CONHECIDAS = [
+  "Lattafa",
+  "Armaf",
+  "Al Haramain",
+  "Rasasi",
+  "Swiss Arabian",
+  "Ajmal",
+  "Maison Alhambra",
+  "Fragrance World",
+  "Afnan",
+  "Zimaya",
+];
+
 async function fetchImageInBackground(productId: string, userId: string, name: string, brand: string | null) {
   try {
     await supabase.functions.invoke("fetch-perfume-image", {
@@ -31,7 +44,9 @@ async function findExistingProduct(
   brand: string | null | undefined,
 ) {
   const targetName = normalizeName(name);
-  const targetBrand = normalizeName(brand);
+  const rawBrand = normalizeName(brand);
+  // trata "sem marca", "" e null como equivalentes
+  const targetBrand = rawBrand === "sem marca" ? "" : rawBrand;
   if (!targetName) return null;
   const { data } = await supabase
     .from("products")
@@ -39,11 +54,12 @@ async function findExistingProduct(
     .eq("user_id", userId);
   if (!data) return null;
   return (
-    data.find(
-      (p) =>
-        normalizeName(p.name) === targetName &&
-        normalizeName(p.brand) === targetBrand,
-    ) || null
+    data.find((p) => {
+      const pName = normalizeName(p.name);
+      const rawPBrand = normalizeName(p.brand);
+      const pBrand = rawPBrand === "sem marca" ? "" : rawPBrand;
+      return pName === targetName && pBrand === targetBrand;
+    }) || null
   );
 }
 
@@ -133,7 +149,7 @@ export default function ProductForm() {
           user_id: user.id,
           name: name.trim(),
           brand: brand.trim() || null,
-          total_ml: ML_PER_FRASCO,
+          total_ml: ml,
           current_ml: ml,
           cost_per_ml: costPerMl,
           sale_price_per_ml: salePerMl,
@@ -341,7 +357,7 @@ export default function ProductForm() {
               user_id: user.id,
               name: d.name.trim(),
               brand: d.brand.trim() || null,
-              total_ml: ML_PER_FRASCO,
+              total_ml: ml,
               current_ml: ml,
               cost_per_ml: cost / ML_PER_FRASCO,
               sale_price_per_ml: sale / ML_PER_FRASCO,
@@ -409,7 +425,18 @@ export default function ProductForm() {
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Marca</label>
-              <Input value={brand} onChange={(e) => setBrand(e.target.value)} className="bg-secondary border-border" placeholder="Ex: Dior" />
+              <Input
+                list="marcas-list"
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                className="bg-secondary border-border"
+                placeholder="Ex: Lattafa"
+              />
+              <datalist id="marcas-list">
+                {MARCAS_CONHECIDAS.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Quantidade de Frascos *</label>
