@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, QrCode, Download, Trash2, Plus, ArrowUp, ArrowDown, Settings2, History, Pencil, Upload } from "lucide-react";
+import { ArrowLeft, QrCode, Download, Trash2, Plus, ArrowUp, ArrowDown, Settings2, History, Pencil, Upload, Wind, Droplets, Clock, Waves, User as UserIcon, Info, Sparkles } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
@@ -236,6 +236,23 @@ export default function ProductDetail() {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       toast.success("Foto atualizada!");
       setPhotoOpen(false);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const detailsMutation = useMutation({
+    mutationFn: async () => {
+      if (!product || !user) throw new Error("Erro");
+      const { data, error } = await supabase.functions.invoke("fetch-perfume-details", {
+        body: { productId: product.id, name: product.name, userId: user.id },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error("Não foi possível buscar as notas");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Notas e detalhes atualizados!");
     },
     onError: (err: any) => toast.error(err.message),
   });
