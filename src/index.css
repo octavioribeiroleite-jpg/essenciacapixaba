@@ -117,4 +117,21 @@
     transform: translateY(-2px);
     box-shadow: 0 8px 24px hsl(38 70% 45% / 0.10);
   }
+
+  @media (min-width: 1024px) {
+    body {
+      background: hsl(36 20% 95%);
+    }
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: hsl(var(--border));
+      border-radius: 99px;
+      border: 2px solid hsl(36 20% 95%);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: hsl(var(--primary) / 0.5);
+    }
+  }
 }
