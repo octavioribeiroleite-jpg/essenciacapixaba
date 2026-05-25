@@ -51,6 +51,16 @@ const longevityToScore = (v?: string | null) => {
 
 const QUICK_QTYS = [1, 2, 3, 5];
 
+const OCCASION_GROUPS: { label: string; items: string[] }[] = [
+  { label: "Período do dia", items: ["Dia", "Noite"] },
+  { label: "Estação", items: ["Verão", "Inverno", "Primavera", "Outono"] },
+  {
+    label: "Ocasião",
+    items: ["Trabalho", "Casual", "Pós-banho", "Encontro", "Festa", "Formal", "Especial"],
+  },
+];
+const MAX_OCCASIONS = 6;
+
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
