@@ -687,16 +687,27 @@ export default function ProductDetail() {
                   <CalendarClock className="w-4 h-4 text-primary" />
                   <h3 className="text-sm font-semibold">Quando Usar</h3>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {p.occasions.map((o: string) => (
-                    <span
-                      key={o}
-                      className="text-[11px] bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full"
-                    >
-                      {o}
-                    </span>
-                  ))}
-                </div>
+                {OCCASION_GROUPS.map((g) => {
+                  const selected = (p.occasions as string[]).filter((o) => g.items.includes(o));
+                  if (selected.length === 0) return null;
+                  return (
+                    <div key={g.label}>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                        {g.label}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selected.map((o) => (
+                          <span
+                            key={o}
+                            className="text-[11px] bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full"
+                          >
+                            {o}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
