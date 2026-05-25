@@ -53,7 +53,18 @@ serve(async (req) => {
     const heartNote = notes.heart?.[0] ?? "";
     const baseNote = notes.base?.[0] ?? "";
 
-    const prompt = `Crie uma descrição comercial irresistível para o perfume "${product.name}" da marca ${product.brand ?? "árabe"}, concentração ${product.concentration ?? "EDP"}, gênero ${product.gender ?? "unissex"}${topNote ? `, nota de topo: ${topNote}` : ""}${heartNote ? `, coração: ${heartNote}` : ""}${baseNote ? `, base: ${baseNote}` : ""}. Escreva em português brasileiro, tom elegante, sofisticado e persuasivo, foco em venda. Máximo 4 linhas (~280 caracteres). Sem títulos, sem listas, sem emojis, sem mencionar preço.`;
+    const systemPrompt = `Você escreve descrições comerciais de perfumes em PT-BR. REGRA ABSOLUTA: use APENAS os dados fornecidos. NUNCA invente notas olfativas, marcas, concentrações ou características que não foram informadas. Se um campo não foi fornecido, escreva de forma genérica sem inventar. Tom elegante, sofisticado, persuasivo. Máximo 4 linhas (~280 caracteres). Sem títulos, listas, emojis ou preço.`;
+
+    const dadosDisponiveis: string[] = [];
+    dadosDisponiveis.push(`Nome: ${product.name}`);
+    if (product.brand) dadosDisponiveis.push(`Marca: ${product.brand}`);
+    if (product.concentration) dadosDisponiveis.push(`Concentração: ${product.concentration}`);
+    if (product.gender) dadosDisponiveis.push(`Gênero: ${product.gender}`);
+    if (topNote) dadosDisponiveis.push(`Nota de topo: ${topNote}`);
+    if (heartNote) dadosDisponiveis.push(`Nota de coração: ${heartNote}`);
+    if (baseNote) dadosDisponiveis.push(`Nota de base: ${baseNote}`);
+
+    const prompt = `Crie a descrição usando SOMENTE estes dados verificados:\n${dadosDisponiveis.join("\n")}\n\nNão mencione notas, marcas ou características que não estão na lista acima.`;
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -62,8 +73,11 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [{ role: "user", content: prompt }],
+        model: "openai/gpt-5",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt },
+        ],
       }),
     });
 
