@@ -313,7 +313,16 @@ export default function Catalog() {
                     {[
                       { label: "Concentração", value: selected.concentration, Icon: Droplet },
                       { label: "Gênero", value: selected.gender, Icon: User },
-                      { label: "Fixação", value: selected.longevity, Icon: Clock },
+                      { label: "Fixação", value: (() => {
+                          const v = selected.longevity;
+                          if (!v) return null;
+                          const s = v.toLowerCase();
+                          if (s.startsWith("muito alt")) return "4/4";
+                          if (s.startsWith("alt")) return "3/4";
+                          if (s.startsWith("méd") || s.startsWith("med")) return "2/4";
+                          if (s.startsWith("baix")) return "1/4";
+                          return v;
+                        })(), Icon: Clock },
                       { label: "Projeção", value: (() => {
                           const v = selected.sillage;
                           if (!v) return null;
