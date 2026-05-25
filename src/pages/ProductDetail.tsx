@@ -1059,6 +1059,37 @@ export default function ProductDetail() {
                 placeholder="Ex: Âmbar, Almíscar, Baunilha"
               />
             </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Quando usar</label>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  "Dia", "Noite", "Verão", "Inverno", "Outono", "Primavera",
+                  "Trabalho", "Casual", "Esporte", "Encontro", "Balada", "Festa",
+                  "Formal", "Especial",
+                ].map((opt) => {
+                  const active = dOccasions.includes(opt);
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() =>
+                        setDOccasions((prev) =>
+                          prev.includes(opt) ? prev.filter((x) => x !== opt) : [...prev, opt]
+                        )
+                      }
+                      className={cn(
+                        "text-[11px] px-2.5 py-1 rounded-full border transition-colors",
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-secondary text-muted-foreground border-border hover:border-primary/50"
+                      )}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <Button
               className="w-full"
               disabled={saveDetailsMutation.isPending}
