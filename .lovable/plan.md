@@ -1,18 +1,38 @@
-## Implementação
+## Objetivo
 
-### 1. Nova edge function `supabase/functions/generate-description/index.ts`
-- Recebe `{ product_id }`.
-- Lê do banco: `name, brand, concentration, gender, fragrance_notes, sale_price_per_ml`.
-- Monta prompt PT-BR (tom elegante, persuasivo, máx 4 linhas, sem títulos/listas/emojis).
-- Chama Lovable AI Gateway com `google/gemini-3-flash-preview` (substitui o `gemini-flash-1.5` do seu prompt — esse não existe no catálogo do gateway).
-- Trata 429/402 com mensagens amigáveis; CORS em todas as respostas.
-- Atualiza `products.description` e retorna `{ description }`.
+Trocar o modelo das edge functions de IA para **`openai/gpt-5`** (máxima precisão) e reforçar os prompts para **nunca inventar dados** — se a IA não tiver certeza sobre um perfume, deve retornar `null` em vez de "chutar".
 
-### 2. `src/pages/ProductDetail.tsx`
-- Adicionar `generateDescriptionMutation`.
-- Renderizar o card "Sobre o Perfume" sempre (hoje só aparece com specs/description) para o botão ficar acessível em qualquer produto.
-- Bloco da descrição: se houver, mostra texto + "Regerar descrição"; se não, placeholder pontilhado + "Gerar descrição IA".
+---
 
-### Sem alterações
-- Sem migração de banco (`description` já existe).
-- Sem novos secrets (`LOVABLE_API_KEY` já configurado).
+## Alterações
+
+### 1. `supabase/functions/fetch-perfume-details/index.ts`
+- Trocar `model: "google/gemini-3-flash-preview"` → `model: "openai/gpt-5"`.
+- Reforçar `systemPrompt` com regra anti-alucinação explícita:
+  - "Se você não tem **certeza absoluta** da existência do perfume ou de qualquer campo, retorne `null` / array vazio. **Nunca invente** marca, notas olfativas ou concentração."
+  - "Use apenas informação verificável de fontes reais (Fragrantica, sites oficiais das marcas árabes)."
+- Adicionar campo opcional `confidence` (alta/média/baixa) no tool schema para sabermos quando a IA teve dúvida.
+- Manter `tool_choice` forçado para garantir saída estruturada.
+
+### 2. `supabase/functions/generate-description/index.ts`
+- Trocar `model: "google/gemini-3-flash-preview"` → `model: "openai/gpt-5"`.
+- Ajustar prompt: a descrição só pode usar notas/marca/concentração **realmente presentes** no produto. Se faltar dado, escrever de forma genérica sem inventar nota.
+
+### 3. Tratamento de erro (ambas funções)
+- Manter os handlers já existentes para 429 (rate limit) e 402 (créditos esgotados).
+- GPT-5 é mais caro — adicionar log claro do modelo usado para você acompanhar consumo.
+
+---
+
+## Detalhes técnicos
+
+- `openai/gpt-5` está disponível no Lovable AI Gateway, sem precisar de API key da OpenAI (usa o `LOVABLE_API_KEY` já configurado).
+- É mais lento (~3-8s por chamada) e mais caro que Gemini Flash. Em batch de "Atualizar tudo com IA" no Dashboard, manter o delay de 700ms entre chamadas para evitar 429.
+- Sem mudanças no banco, no frontend ou em outras funções (`fetch-perfume-image`, `parse-invoice-text` continuam como estão).
+
+---
+
+## Fora do escopo
+
+- Não vou adicionar fallback automático Gemini → OpenAI (você não pediu; posso fazer depois se quiser).
+- Não vou mexer no `fetch-perfume-image` (busca de fotos via DuckDuckGo, não usa LLM).

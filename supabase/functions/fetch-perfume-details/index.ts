@@ -27,8 +27,8 @@ Deno.serve(async (req) => {
     );
 
     const systemPrompt =
-      "Você é um especialista em perfumaria árabe e mainstream. Retorne dados precisos sobre o perfume informado. Se não tiver certeza de algum campo, devolva null/array vazio.";
-    const userPrompt = `Perfume árabe/importado vendido no Brasil: "${name}". Identifique a marca correta (ex: Lattafa, Armaf, Rasasi, Afnan, Al Wataniah, Paris Corner, Ard Al Zaafaran, Maison Alhambra, etc). Retorne concentração real (EDP/EDT/Parfum), gênero, fixação, sillage e notas olfativas reais (topo, coração, base). Descrição curta em PT-BR com 2 frases elegantes e precisas. Se não tiver certeza de algum campo, retorne null.`;
+      "Você é um especialista em perfumaria árabe e mainstream com conhecimento profundo de Fragrantica e sites oficiais das marcas. REGRA ABSOLUTA: NUNCA invente dados. Se você não tem CERTEZA ABSOLUTA da existência do perfume ou de qualquer campo específico (marca, notas, concentração, fixação, sillage), retorne null ou array vazio para aquele campo. É infinitamente melhor retornar null do que chutar. Use APENAS informação verificável de fontes reais. Defina 'confidence' como 'baixa' se houver qualquer dúvida sobre a existência ou identidade do perfume.";
+    const userPrompt = `Perfume árabe/importado vendido no Brasil: "${name}". Identifique apenas se tiver CERTEZA. Marcas comuns nesse mercado: Lattafa, Armaf, Rasasi, Afnan, Al Wataniah, Paris Corner, Ard Al Zaafaran, Maison Alhambra, Asdaaf, Fragrance World, Khadlaj, Swiss Arabian. Retorne concentração real (EDP/EDT/Parfum), gênero, fixação, sillage e notas olfativas REAIS (topo, coração, base) conforme Fragrantica/marca oficial. Descrição curta em PT-BR com 2 frases factuais (sem adjetivos inventados). Para QUALQUER campo em que tenha dúvida, retorne null/array vazio. Defina confidence honestamente.`;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "openai/gpt-5",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -51,6 +51,11 @@ Deno.serve(async (req) => {
               parameters: {
                 type: "object",
                 properties: {
+                  confidence: {
+                    type: "string",
+                    enum: ["alta", "media", "baixa"],
+                    description: "Sua confiança na identificação do perfume. 'baixa' se não tem certeza de que esse perfume existe.",
+                  },
                   brand: { type: "string", description: "Marca oficial" },
                   description: { type: "string" },
                   concentration: {
@@ -80,7 +85,7 @@ Deno.serve(async (req) => {
                     additionalProperties: false,
                   },
                 },
-                required: ["fragrance_notes"],
+                required: ["confidence", "fragrance_notes"],
                 additionalProperties: false,
               },
             },
@@ -129,6 +134,16 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: false, error: "parse" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    console.log("[fetch-perfume-details] model=openai/gpt-5 name=", name, "confidence=", data.confidence);
+
+    // Se a IA não tem certeza, NÃO grava nada para evitar dados falsos
+    if (data.confidence === "baixa") {
+      return new Response(
+        JSON.stringify({ ok: false, error: "low_confidence", data }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     // Não sobrescreve marca se vier vazia
