@@ -257,6 +257,23 @@ export default function ProductDetail() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const generateDescriptionMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("generate-description", {
+        body: { product_id: id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Descrição gerada com sucesso!");
+    },
+    onError: (err: any) => toast.error(err?.message ?? "Erro ao gerar descrição"),
+   });
+
   const editMutation = useMutation({
     mutationFn: async () => {
       if (!product || !user) throw new Error("Erro");
