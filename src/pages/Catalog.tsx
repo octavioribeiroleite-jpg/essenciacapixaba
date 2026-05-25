@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
-import { Search, MessageCircle, Share2, Sparkles, X, Droplet, User, Clock, Wind } from "lucide-react";
+import { Search, MessageCircle, Share2, Sparkles, X, Droplet, User, Clock, Wind, CalendarClock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -33,6 +33,7 @@ type Product = {
   sillage: string | null;
   description: string | null;
   fragrance_notes: Notes | null;
+  occasions: string[] | null;
 };
 
 type GenderFilter = "Todos" | "Masculino" | "Feminino" | "Unissex";
@@ -65,7 +66,7 @@ export default function Catalog() {
       const { data, error } = await publicSupabase
         .from("products")
         .select(
-          "id,name,brand,image_url,sale_price_per_ml,current_ml,total_ml,concentration,gender,longevity,sillage,description,fragrance_notes"
+          "id,name,brand,image_url,sale_price_per_ml,current_ml,total_ml,concentration,gender,longevity,sillage,description,fragrance_notes,occasions"
         )
         .gt("current_ml", 0)
         .order("name");
@@ -372,6 +373,25 @@ export default function Catalog() {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+
+                {selected.occasions && selected.occasions.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <CalendarClock className="w-3.5 h-3.5 text-primary" />
+                      Quando Usar
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selected.occasions.map((o) => (
+                        <span
+                          key={o}
+                          className="text-[11px] bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full"
+                        >
+                          {o}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
 
