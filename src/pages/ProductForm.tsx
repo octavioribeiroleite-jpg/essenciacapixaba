@@ -38,6 +38,16 @@ async function fetchImageInBackground(productId: string, userId: string, name: s
   }
 }
 
+async function fetchDetailsInBackground(productId: string, userId: string, name: string) {
+  try {
+    await supabase.functions.invoke("fetch-perfume-details", {
+      body: { productId, userId, name },
+    });
+  } catch {
+    // silencioso
+  }
+}
+
 async function findExistingProduct(
   userId: string,
   name: string,
