@@ -29,6 +29,16 @@ import { cn } from "@/lib/utils";
 import { logMovement, MOVEMENT_LABEL, type MovementType } from "@/lib/stockMovements";
 import { ML_PER_FRASCO, formatFrascos, perFrasco } from "@/lib/frascos";
 
+const sillageToScore = (v?: string | null) => {
+  if (!v) return null;
+  const s = v.toLowerCase();
+  if (s.startsWith("suave") || s.startsWith("baix") || s.startsWith("intim")) return "1/4";
+  if (s.startsWith("moder") || s.startsWith("méd") || s.startsWith("med")) return "2/4";
+  if (s.startsWith("forte") || s.startsWith("alt")) return "3/4";
+  if (s.startsWith("enorme") || s.startsWith("muito")) return "4/4";
+  return v;
+};
+
 const QUICK_QTYS = [1, 2, 3, 5];
 
 export default function ProductDetail() {
