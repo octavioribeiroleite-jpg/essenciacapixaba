@@ -318,7 +318,7 @@ export default function Catalog() {
                           const v = selected.sillage;
                           if (!v) return null;
                           const s = v.toLowerCase();
-                          if (s.startsWith("suave") || s.startsWith("baix") || s.startsWith("intim")) return "3/4".replace("3","1");
+                          if (s.startsWith("suave") || s.startsWith("baix") || s.startsWith("intim")) return "1/4";
                           if (s.startsWith("moder") || s.startsWith("méd") || s.startsWith("med")) return "2/4";
                           if (s.startsWith("forte") || s.startsWith("alt")) return "3/4";
                           if (s.startsWith("enorme") || s.startsWith("muito")) return "4/4";
