@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -49,6 +51,15 @@ export default function ProductDetail() {
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [dDescription, setDDescription] = useState("");
+  const [dConcentration, setDConcentration] = useState("");
+  const [dGender, setDGender] = useState("");
+  const [dLongevity, setDLongevity] = useState("");
+  const [dSillage, setDSillage] = useState("");
+  const [dTop, setDTop] = useState("");
+  const [dHeart, setDHeart] = useState("");
+  const [dBase, setDBase] = useState("");
   const qrRef = useRef<HTMLCanvasElement>(null);
 
   const { data: product } = useQuery({
