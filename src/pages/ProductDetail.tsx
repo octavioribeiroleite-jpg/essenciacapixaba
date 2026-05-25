@@ -915,6 +915,118 @@ export default function ProductDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Editar detalhes manualmente */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Editar informações do perfume</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Descrição</label>
+              <Textarea
+                value={dDescription}
+                onChange={(e) => setDDescription(e.target.value)}
+                className="bg-secondary border-border min-h-[80px]"
+                placeholder="Descrição comercial do perfume"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Concentração</label>
+                <Input
+                  value={dConcentration}
+                  onChange={(e) => setDConcentration(e.target.value)}
+                  className="bg-secondary border-border"
+                  placeholder="EDP, EDT..."
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Gênero</label>
+                <Select value={dGender} onValueChange={setDGender}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Masculino">Masculino</SelectItem>
+                    <SelectItem value="Feminino">Feminino</SelectItem>
+                    <SelectItem value="Unissex">Unissex</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Fixação</label>
+                <Select value={dLongevity} onValueChange={setDLongevity}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Baixa">Baixa</SelectItem>
+                    <SelectItem value="Média">Média</SelectItem>
+                    <SelectItem value="Alta">Alta</SelectItem>
+                    <SelectItem value="Muito Alta">Muito Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Sillage</label>
+                <Select value={dSillage} onValueChange={setDSillage}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Suave">Suave</SelectItem>
+                    <SelectItem value="Moderado">Moderado</SelectItem>
+                    <SelectItem value="Forte">Forte</SelectItem>
+                    <SelectItem value="Enorme">Enorme</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Notas de topo <span className="opacity-60">(separadas por vírgula)</span>
+              </label>
+              <Input
+                value={dTop}
+                onChange={(e) => setDTop(e.target.value)}
+                className="bg-secondary border-border"
+                placeholder="Ex: Bergamota, Limão, Pera"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Notas de coração <span className="opacity-60">(separadas por vírgula)</span>
+              </label>
+              <Input
+                value={dHeart}
+                onChange={(e) => setDHeart(e.target.value)}
+                className="bg-secondary border-border"
+                placeholder="Ex: Rosa, Jasmim"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Notas de base <span className="opacity-60">(separadas por vírgula)</span>
+              </label>
+              <Input
+                value={dBase}
+                onChange={(e) => setDBase(e.target.value)}
+                className="bg-secondary border-border"
+                placeholder="Ex: Âmbar, Almíscar, Baunilha"
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={saveDetailsMutation.isPending}
+              onClick={() => saveDetailsMutation.mutate()}
+            >
+              {saveDetailsMutation.isPending ? "Salvando..." : "Salvar informações"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
