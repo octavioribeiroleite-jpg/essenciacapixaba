@@ -2,7 +2,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Package, Droplets, TrendingUp, AlertTriangle, ArrowRight, DollarSign } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -47,148 +46,182 @@ export default function Dashboard() {
     products?.reduce((sum, p) => sum + Number(p.current_ml) / ML_PER_FRASCO, 0) ?? 0;
   const lowStock =
     products?.filter((p) => Number(p.current_ml) < ML_PER_FRASCO * 2) ?? [];
-  const monthRevenue = salesThisMonth?.reduce((sum, s) => sum + Number(s.sale_price), 0) ?? 0;
-  const monthProfit = salesThisMonth?.reduce((sum, s) => sum + (Number(s.sale_price) - Number(s.cost_price)), 0) ?? 0;
+  const monthRevenue =
+    salesThisMonth?.reduce((sum, s) => sum + Number(s.sale_price), 0) ?? 0;
+  const monthProfit =
+    salesThisMonth?.reduce(
+      (sum, s) => sum + (Number(s.sale_price) - Number(s.cost_price)),
+      0
+    ) ?? 0;
   const recentSales = salesThisMonth?.slice(0, 5) ?? [];
+  const frascoLabel = Number.isInteger(totalFrascos)
+    ? `${totalFrascos}`
+    : totalFrascos.toFixed(1);
 
-  const frascoLabel =
-    Number.isInteger(totalFrascos) ? `${totalFrascos}` : totalFrascos.toFixed(1);
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+
   const stats = [
     {
       label: "Produtos",
       value: String(totalProducts),
       sub: "cadastrados",
       icon: Package,
-      iconBg: "bg-primary/10",
       iconColor: "text-primary",
+      cardClass: "stat-gold",
     },
     {
       label: "Estoque",
       value: frascoLabel,
       sub: totalFrascos === 1 ? "frasco" : "frascos",
       icon: Droplets,
-      iconBg: "bg-sky-500/10",
-      iconColor: "text-sky-400",
+      iconColor: "text-sky-500",
+      cardClass: "stat-sky",
     },
     {
       label: "Receita",
       value: `R$ ${monthRevenue.toFixed(2)}`,
       sub: "este mês",
       icon: DollarSign,
-      iconBg: "bg-emerald-500/10",
-      iconColor: "text-emerald-400",
+      iconColor: "text-emerald-500",
+      cardClass: "stat-emerald",
     },
     {
       label: "Lucro",
       value: `R$ ${monthProfit.toFixed(2)}`,
       sub: "este mês",
       icon: TrendingUp,
-      iconBg: "bg-success/10",
-      iconColor: "text-success",
+      iconColor: "text-green-600",
+      cardClass: "stat-green",
     },
   ];
 
   return (
-    <div className="space-y-6 fade-in">
-      <div>
-        <h1 className="text-lg font-semibold text-foreground">Dashboard</h1>
-        <p className="text-xs text-muted-foreground capitalize">
+    <div className="p-4 space-y-5 max-w-lg mx-auto pb-24">
+      <div className="fade-in pt-2">
+        <p className="text-sm text-muted-foreground font-medium">
           {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+        </p>
+        <h1 className="text-2xl font-bold text-foreground mt-0.5">
+          {greeting} 👋
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Aqui está o resumo do seu negócio
         </p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3">
-        {stats.map((stat) => (
-          <Card key={stat.label} className="glass-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground truncate">{stat.label}</span>
-                <span className={`flex h-7 w-7 items-center justify-center rounded-lg shrink-0 ${stat.iconBg}`}>
-                  <stat.icon className={`h-3.5 w-3.5 ${stat.iconColor}`} />
-                </span>
-              </div>
-              <p className="text-lg font-bold text-foreground leading-tight">{stat.value}</p>
-              {stat.sub && (
-                <p className="text-[10px] text-muted-foreground mt-0.5">{stat.sub}</p>
-              )}
-            </CardContent>
-          </Card>
+        {stats.map((stat, i) => (
+          <div
+            key={stat.label}
+            className={`fade-in fade-in-delay-${i + 1} hover-lift rounded-2xl border p-4 ${stat.cardClass}`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {stat.label}
+              </span>
+              <stat.icon className={`w-4 h-4 ${stat.iconColor}`} />
+            </div>
+            <p className="text-2xl font-bold text-foreground leading-none">
+              {stat.value}
+            </p>
+            {stat.sub && (
+              <p className="text-xs text-muted-foreground mt-1">{stat.sub}</p>
+            )}
+          </div>
         ))}
       </div>
 
-      {/* Low Stock Alerts */}
       {lowStock.length > 0 && (
-        <div className="rounded-2xl border border-warning/30 bg-warning/5 p-3 space-y-2">
-          <h2 className="text-sm font-medium text-warning flex items-center gap-2 px-1">
-            <AlertTriangle className="h-4 w-4" />
-            Estoque Baixo ({lowStock.length})
-          </h2>
-          <div className="space-y-1.5">
-            {lowStock.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => navigate(`/products/${p.id}`)}
-                className="w-full flex items-center justify-between rounded-xl px-3 py-2 hover:bg-warning/10 transition-colors text-left"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{p.brand || "Sem marca"}</p>
-                </div>
-                <span className="text-sm font-bold text-warning shrink-0">
-                  {formatFrascos(p.current_ml)} {Number(p.current_ml) === ML_PER_FRASCO ? "frasco" : "frascos"}
-                </span>
-              </button>
-            ))}
+        <div className="fade-in rounded-2xl border border-amber-400/40 bg-amber-50/60 p-4 space-y-2">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle className="w-4 h-4 text-amber-500 pulse-soft" />
+            <h2 className="text-sm font-semibold text-amber-700">
+              Estoque Baixo ({lowStock.length})
+            </h2>
           </div>
+          {lowStock.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => navigate(`/products/${p.id}`)}
+              className="w-full flex items-center justify-between rounded-xl px-3 py-2 hover:bg-amber-100/80 transition-colors text-left"
+            >
+              <div>
+                <p className="text-sm font-medium text-foreground">{p.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {p.brand || "Sem marca"}
+                </p>
+              </div>
+              <span className="text-xs font-semibold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+                {formatFrascos(p.current_ml)}{" "}
+                {Number(p.current_ml) === ML_PER_FRASCO ? "frasco" : "frascos"}
+              </span>
+            </button>
+          ))}
         </div>
       )}
 
-      {/* Recent Sales */}
-      <div>
+      <div className="fade-in rounded-2xl border border-border/60 bg-card p-4 space-y-1">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-medium text-foreground">Vendas Recentes</h2>
+          <h2 className="text-sm font-semibold text-foreground">
+            Vendas Recentes
+          </h2>
           <button
             onClick={() => navigate("/reports")}
             className="text-xs text-primary flex items-center gap-1 hover:underline"
           >
-            Ver tudo <ArrowRight className="h-3 w-3" />
+            Ver tudo <ArrowRight className="w-3 h-3" />
           </button>
         </div>
+
         {recentSales.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Nenhuma venda este mês.</p>
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Nenhuma venda este mês.
+          </p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {recentSales.map((sale: any) => (
-              <Card key={sale.id} className="glass-card">
-                <CardContent className="p-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{sale.products?.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(sale.created_at), "dd/MM HH:mm", { locale: ptBR })} · -{formatFrascos(sale.ml_sold)} frasco(s)
-                    </p>
-                  </div>
-                  <p className="text-sm font-bold text-primary">R$ {Number(sale.sale_price).toFixed(2)}</p>
-                </CardContent>
-              </Card>
+              <div
+                key={sale.id}
+                className="flex items-center justify-between py-2 border-b border-border/40 last:border-0"
+              >
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {sale.products?.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(sale.created_at), "dd/MM HH:mm", {
+                      locale: ptBR,
+                    })}{" "}
+                    · -{formatFrascos(sale.ml_sold)} frasco(s)
+                  </p>
+                </div>
+                <span className="text-sm font-semibold text-emerald-600">
+                  R$ {Number(sale.sale_price).toFixed(2)}
+                </span>
+              </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Atalho para o catálogo */}
       <button
         onClick={() => navigate("/products")}
-        className="w-full flex items-center justify-between bg-card border border-border/60 rounded-2xl px-4 py-4 hover:border-primary/50 transition-colors"
+        className="fade-in hover-lift w-full flex items-center justify-between bg-card border border-border/60 rounded-2xl px-4 py-4 hover:border-primary/50 transition-colors"
       >
         <div className="flex items-center gap-3">
           <span className="text-2xl">🧴</span>
           <div className="text-left">
-            <p className="text-sm font-medium text-foreground">Ver Catálogo</p>
-            <p className="text-xs text-muted-foreground">{totalProducts} produtos cadastrados</p>
+            <p className="text-sm font-semibold text-foreground">
+              Ver Catálogo
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {totalProducts} produtos cadastrados
+            </p>
           </div>
         </div>
-        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        <ArrowRight className="w-4 h-4 text-muted-foreground" />
       </button>
     </div>
   );
