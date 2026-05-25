@@ -122,6 +122,10 @@
     body {
       background: hsl(36 20% 95%);
     }
+    ::selection {
+      background: hsl(var(--primary) / 0.25);
+      color: hsl(var(--foreground));
+    }
     ::-webkit-scrollbar {
       width: 10px;
     }
