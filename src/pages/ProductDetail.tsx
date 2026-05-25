@@ -986,10 +986,10 @@ export default function ProductDetail() {
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Suave">Suave</SelectItem>
-                    <SelectItem value="Moderado">Moderado</SelectItem>
-                    <SelectItem value="Forte">Forte</SelectItem>
-                    <SelectItem value="Enorme">Enorme</SelectItem>
+                    <SelectItem value="Suave">1/4 — Suave</SelectItem>
+                    <SelectItem value="Moderado">2/4 — Moderado</SelectItem>
+                    <SelectItem value="Forte">3/4 — Forte</SelectItem>
+                    <SelectItem value="Enorme">4/4 — Enorme</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
