@@ -1,7 +1,12 @@
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
-import { Package, Droplets, TrendingUp, AlertTriangle, ArrowRight, DollarSign } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Package, Droplets, TrendingUp, AlertTriangle, ArrowRight, DollarSign, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -58,6 +63,35 @@ export default function Dashboard() {
     ? `${totalFrascos}`
     : totalFrascos.toFixed(1);
 
+  const queryClient = useQueryClient();
+  const [updateOpen, setUpdateOpen] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState({ done: 0, total: 0, ok: 0 });
+
+  const updateAllMutation = useMutation({
+    mutationFn: async () => {
+      if (!products?.length || !user) return;
+      const total = products.length;
+      setUpdateProgress({ done: 0, total, ok: 0 });
+      setUpdateOpen(true);
+      for (const p of products) {
+        try {
+          await supabase.functions.invoke("fetch-perfume-details", {
+            body: { productId: p.id, name: p.name, userId: user.id },
+          });
+          await supabase.functions.invoke("fetch-perfume-image", {
+            body: { productId: p.id, name: p.name, brand: p.brand, userId: user.id },
+          });
+          setUpdateProgress((s) => ({ ...s, done: s.done + 1, ok: s.ok + 1 }));
+        } catch {
+          setUpdateProgress((s) => ({ ...s, done: s.done + 1 }));
+        }
+        await new Promise((r) => setTimeout(r, 700));
+      }
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Catálogo atualizado com IA!");
+    },
+  });
+
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
   const greetingEmoji = hour < 12 ? "👋" : hour < 18 ? "☀️" : "🌙";
@@ -108,6 +142,16 @@ export default function Dashboard() {
         </h1>
         <p className="text-xs text-muted-foreground">Aqui está o resumo do seu negócio</p>
       </div>
+
+      <Button
+        onClick={() => updateAllMutation.mutate()}
+        disabled={updateAllMutation.isPending}
+        className="w-full gap-2 bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
+        variant="outline"
+      >
+        <RefreshCw className={`w-4 h-4 ${updateAllMutation.isPending ? "animate-spin" : ""}`} />
+        {updateAllMutation.isPending ? "Atualizando catálogo..." : "✨ Atualizar tudo com IA"}
+      </Button>
 
       <div className="grid grid-cols-2 gap-2.5">
         {stats.map((stat, i) => {
@@ -225,6 +269,23 @@ export default function Dashboard() {
         </div>
         <ArrowRight className="w-4 h-4 text-muted-foreground" />
       </button>
+
+      <Dialog open={updateOpen} onOpenChange={(o) => { if (!o && updateProgress.done >= updateProgress.total) setUpdateOpen(false); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Atualizando catálogo com IA</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Progress value={updateProgress.total > 0 ? (updateProgress.done / updateProgress.total) * 100 : 0} className="h-2" />
+            <p className="text-sm text-muted-foreground text-center">
+              {updateProgress.done} de {updateProgress.total} produtos · {updateProgress.ok} atualizados
+            </p>
+            {updateProgress.done >= updateProgress.total && updateProgress.total > 0 && (
+              <Button className="w-full" onClick={() => setUpdateOpen(false)}>Fechar</Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
