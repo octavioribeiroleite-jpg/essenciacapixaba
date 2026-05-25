@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Sparkles, Loader2, Wind } from "lucide-react";
+import { Plus, Search, Sparkles, Loader2, Wind, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
@@ -112,6 +112,28 @@ export default function Products() {
         </Button>
         <Button variant="outline" size="sm" onClick={runNotes} disabled={isRunning} className="flex-1 gap-1.5 text-xs h-9">
           <Wind className="w-3.5 h-3.5 text-blue-500" /> Notas + Marca IA
+        </Button>
+      </div>
+
+      <div className="fade-in">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            const url = `${window.location.origin}/catalogo`;
+            try {
+              if (navigator.share) await navigator.share({ title: "Essência Capixaba", url });
+              else {
+                await navigator.clipboard.writeText(url);
+                toast.success("Link do catálogo copiado!");
+              }
+            } catch {
+              /* ignored */
+            }
+          }}
+          className="w-full gap-1.5 text-xs h-9"
+        >
+          <Share2 className="w-3.5 h-3.5 text-primary" /> Compartilhar catálogo público
         </Button>
       </div>
 

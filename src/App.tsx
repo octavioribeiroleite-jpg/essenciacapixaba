@@ -14,6 +14,7 @@ import ProductDetail from "@/pages/ProductDetail";
 import Scanner from "@/pages/Scanner";
 import Sales from "@/pages/Sales";
 import Reports from "@/pages/Reports";
+import Catalog from "@/pages/Catalog";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,8 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/catalogo" element={<Catalog />} />
+            <Route path="/catalogo/:id" element={<Catalog />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
