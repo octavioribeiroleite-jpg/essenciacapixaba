@@ -29,6 +29,16 @@ import { cn } from "@/lib/utils";
 import { logMovement, MOVEMENT_LABEL, type MovementType } from "@/lib/stockMovements";
 import { ML_PER_FRASCO, formatFrascos, perFrasco } from "@/lib/frascos";
 
+const sillageToScore = (v?: string | null) => {
+  if (!v) return null;
+  const s = v.toLowerCase();
+  if (s.startsWith("suave") || s.startsWith("baix") || s.startsWith("intim")) return "1/4";
+  if (s.startsWith("moder") || s.startsWith("méd") || s.startsWith("med")) return "2/4";
+  if (s.startsWith("forte") || s.startsWith("alt")) return "3/4";
+  if (s.startsWith("enorme") || s.startsWith("muito")) return "4/4";
+  return v;
+};
+
 const QUICK_QTYS = [1, 2, 3, 5];
 
 export default function ProductDetail() {
@@ -593,7 +603,7 @@ export default function ProductDetail() {
                       <Waves className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                       <div>
                         <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Projeção</p>
-                        <p className="text-xs font-semibold">{p.sillage}</p>
+                        <p className="text-xs font-semibold">{sillageToScore(p.sillage)}</p>
                       </div>
                     </div>
                   )}
@@ -976,10 +986,10 @@ export default function ProductDetail() {
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Suave">Suave</SelectItem>
-                    <SelectItem value="Moderado">Moderado</SelectItem>
-                    <SelectItem value="Forte">Forte</SelectItem>
-                    <SelectItem value="Enorme">Enorme</SelectItem>
+                    <SelectItem value="Suave">1/4 — Suave</SelectItem>
+                    <SelectItem value="Moderado">2/4 — Moderado</SelectItem>
+                    <SelectItem value="Forte">3/4 — Forte</SelectItem>
+                    <SelectItem value="Enorme">4/4 — Enorme</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
