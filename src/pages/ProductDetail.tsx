@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, QrCode, Download, Trash2, Plus, ArrowUp, ArrowDown, Settings2, History, Pencil, Upload, Wind, Droplets, Clock, Waves, User as UserIcon, Info, Sparkles } from "lucide-react";
+import { ArrowLeft, QrCode, Download, Trash2, Plus, ArrowUp, ArrowDown, Settings2, History, Pencil, Upload, Wind, Droplets, Clock, Waves, User as UserIcon, Info, Sparkles, CalendarClock } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
@@ -80,6 +80,7 @@ export default function ProductDetail() {
   const [dTop, setDTop] = useState("");
   const [dHeart, setDHeart] = useState("");
   const [dBase, setDBase] = useState("");
+  const [dOccasions, setDOccasions] = useState<string[]>([]);
   const qrRef = useRef<HTMLCanvasElement>(null);
 
   const { data: product } = useQuery({
@@ -317,6 +318,7 @@ export default function ProductDetail() {
     setDTop((notes.top ?? []).join(", "));
     setDHeart((notes.heart ?? []).join(", "));
     setDBase((notes.base ?? []).join(", "));
+    setDOccasions(Array.isArray(p.occasions) ? p.occasions : []);
     setDetailsOpen(true);
   };
 
@@ -338,6 +340,7 @@ export default function ProductDetail() {
             heart: toArr(dHeart),
             base: toArr(dBase),
           },
+          occasions: dOccasions,
         })
         .eq("id", product.id);
       if (error) throw error;
@@ -665,6 +668,25 @@ export default function ProductDetail() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {Array.isArray(p.occasions) && p.occasions.length > 0 && (
+              <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <CalendarClock className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold">Quando Usar</h3>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {p.occasions.map((o: string) => (
+                    <span
+                      key={o}
+                      className="text-[11px] bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full"
+                    >
+                      {o}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -1036,6 +1058,37 @@ export default function ProductDetail() {
                 className="bg-secondary border-border"
                 placeholder="Ex: Âmbar, Almíscar, Baunilha"
               />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Quando usar</label>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  "Dia", "Noite", "Verão", "Inverno", "Outono", "Primavera",
+                  "Trabalho", "Casual", "Esporte", "Encontro", "Balada", "Festa",
+                  "Formal", "Especial",
+                ].map((opt) => {
+                  const active = dOccasions.includes(opt);
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() =>
+                        setDOccasions((prev) =>
+                          prev.includes(opt) ? prev.filter((x) => x !== opt) : [...prev, opt]
+                        )
+                      }
+                      className={cn(
+                        "text-[11px] px-2.5 py-1 rounded-full border transition-colors",
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-secondary text-muted-foreground border-border hover:border-primary/50"
+                      )}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <Button
               className="w-full"
