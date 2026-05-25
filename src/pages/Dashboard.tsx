@@ -59,8 +59,8 @@ export default function Dashboard() {
     : totalFrascos.toFixed(1);
 
   const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const greeting = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const greetingEmoji = hour < 12 ? "👋" : hour < 18 ? "☀️" : "🌙";
 
   const stats = [
     {
@@ -81,7 +81,7 @@ export default function Dashboard() {
     },
     {
       label: "Receita",
-      value: `R$ ${monthRevenue.toFixed(2)}`,
+      value: `R$\u00A0${monthRevenue.toFixed(2)}`,
       sub: "este mês",
       icon: DollarSign,
       iconColor: "text-emerald-500",
@@ -89,7 +89,7 @@ export default function Dashboard() {
     },
     {
       label: "Lucro",
-      value: `R$ ${monthProfit.toFixed(2)}`,
+      value: `R$\u00A0${monthProfit.toFixed(2)}`,
       sub: "este mês",
       icon: TrendingUp,
       iconColor: "text-green-600",
@@ -98,39 +98,41 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-4 space-y-5 max-w-lg mx-auto pb-24">
+    <div className="p-4 space-y-4 max-w-lg mx-auto pb-24">
       <div className="fade-in pt-2">
-        <p className="text-sm text-muted-foreground font-medium">
+        <p className="text-xs text-muted-foreground capitalize">
           {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
         </p>
-        <h1 className="text-2xl font-bold text-foreground mt-0.5">
-          {greeting} 👋
+        <h1 className="text-xl font-bold text-foreground mt-0.5">
+          {greeting} {greetingEmoji}
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Aqui está o resumo do seu negócio
-        </p>
+        <p className="text-xs text-muted-foreground">Aqui está o resumo do seu negócio</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {stats.map((stat, i) => (
-          <div
-            key={stat.label}
-            className={`fade-in fade-in-delay-${i + 1} hover-lift rounded-2xl border p-4 ${stat.cardClass}`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {stat.label}
-              </span>
-              <stat.icon className={`w-4 h-4 ${stat.iconColor}`} />
+      <div className="grid grid-cols-2 gap-2.5">
+        {stats.map((stat, i) => {
+          const Icon = stat.icon;
+          const isMoney = stat.value.startsWith("R$");
+          return (
+            <div
+              key={i}
+              className={`fade-in ${stat.cardClass} rounded-2xl border p-3.5 flex flex-col gap-1`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  {stat.label}
+                </span>
+                <Icon className={`w-4 h-4 ${stat.iconColor}`} />
+              </div>
+              <p className={`font-bold text-foreground leading-tight ${isMoney ? "text-base" : "text-2xl"}`}>
+                {stat.value}
+              </p>
+              {stat.sub && (
+                <p className="text-[11px] text-muted-foreground">{stat.sub}</p>
+              )}
             </div>
-            <p className="text-2xl font-bold text-foreground leading-none">
-              {stat.value}
-            </p>
-            {stat.sub && (
-              <p className="text-xs text-muted-foreground mt-1">{stat.sub}</p>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {lowStock.length > 0 && (
