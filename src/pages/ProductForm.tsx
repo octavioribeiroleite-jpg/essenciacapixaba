@@ -180,6 +180,7 @@ export default function ProductForm() {
         if (!image_url) {
           fetchImageInBackground(inserted.id, user.id, name.trim(), brand.trim() || null);
         }
+        fetchDetailsInBackground(inserted.id, user.id, name.trim());
       }
       return { merged: false };
     },
@@ -385,6 +386,7 @@ export default function ProductForm() {
               note: `Estoque inicial: ${qty} frasco(s)`,
             });
             fetchImageInBackground(ins.id, user.id, ins.name, ins.brand);
+            fetchDetailsInBackground(ins.id, user.id, ins.name);
           }
           created++;
         }
