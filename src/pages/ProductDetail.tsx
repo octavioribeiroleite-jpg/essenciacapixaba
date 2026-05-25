@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, QrCode, Download, Trash2, Plus, ArrowUp, ArrowDown, Settings2, History, Pencil, Upload } from "lucide-react";
+import { ArrowLeft, QrCode, Download, Trash2, Plus, ArrowUp, ArrowDown, Settings2, History, Pencil, Upload, Wind, Droplets, Clock, Waves, User as UserIcon, Info, Sparkles } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
@@ -240,6 +240,23 @@ export default function ProductDetail() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const detailsMutation = useMutation({
+    mutationFn: async () => {
+      if (!product || !user) throw new Error("Erro");
+      const { data, error } = await supabase.functions.invoke("fetch-perfume-details", {
+        body: { productId: product.id, name: product.name, userId: user.id },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error("Não foi possível buscar as notas");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Notas e detalhes atualizados!");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const editMutation = useMutation({
     mutationFn: async () => {
       if (!product || !user) throw new Error("Erro");
@@ -421,6 +438,134 @@ export default function ProductDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Perfume details cards */}
+      {(() => {
+        const p: any = product;
+        const notes = (p?.fragrance_notes ?? null) as
+          | { top?: string[]; heart?: string[]; base?: string[] }
+          | null;
+        const hasNotes =
+          !!notes &&
+          ((notes.top?.length ?? 0) + (notes.heart?.length ?? 0) + (notes.base?.length ?? 0) > 0);
+        const hasSpecs = !!(p?.description || p?.concentration || p?.gender || p?.longevity || p?.sillage);
+        return (
+          <div className="space-y-3">
+            {hasSpecs && (
+              <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Info className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold">Sobre o Perfume</h3>
+                </div>
+                {p.description && (
+                  <p className="text-xs text-muted-foreground leading-relaxed">{p.description}</p>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  {p.concentration && (
+                    <div className="bg-secondary rounded-xl p-2.5 flex items-center gap-2">
+                      <Droplets className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Concentração</p>
+                        <p className="text-xs font-semibold">{p.concentration}</p>
+                      </div>
+                    </div>
+                  )}
+                  {p.gender && (
+                    <div className="bg-secondary rounded-xl p-2.5 flex items-center gap-2">
+                      <UserIcon className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Gênero</p>
+                        <p className="text-xs font-semibold">{p.gender}</p>
+                      </div>
+                    </div>
+                  )}
+                  {p.longevity && (
+                    <div className="bg-secondary rounded-xl p-2.5 flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Fixação</p>
+                        <p className="text-xs font-semibold">{p.longevity}</p>
+                      </div>
+                    </div>
+                  )}
+                  {p.sillage && (
+                    <div className="bg-secondary rounded-xl p-2.5 flex items-center gap-2">
+                      <Waves className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Sillage</p>
+                        <p className="text-xs font-semibold">{p.sillage}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {hasNotes && (
+              <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Wind className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold">Notas Olfativas</h3>
+                </div>
+                {notes?.top && notes.top.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="w-2 h-2 rounded-full bg-yellow-400" />
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Notas de Topo</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {notes.top.map((n) => (
+                        <span key={n} className="text-[11px] bg-yellow-50 text-yellow-700 border border-yellow-200 px-2 py-0.5 rounded-full">{n}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {notes?.heart && notes.heart.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="w-2 h-2 rounded-full bg-rose-400" />
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Notas de Coração</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {notes.heart.map((n) => (
+                        <span key={n} className="text-[11px] bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full">{n}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {notes?.base && notes.base.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="w-2 h-2 rounded-full bg-amber-700" />
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Notas de Base</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {notes.base.map((n) => (
+                        <span key={n} className="text-[11px] bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">{n}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2 text-xs"
+              disabled={detailsMutation.isPending}
+              onClick={() => detailsMutation.mutate()}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {detailsMutation.isPending
+                ? "Buscando com IA..."
+                : hasNotes || hasSpecs
+                  ? "Atualizar notas e detalhes"
+                  : "Buscar notas e detalhes com IA"}
+            </Button>
+          </div>
+        );
+      })()}
 
       {/* Sales History */}
       <div>

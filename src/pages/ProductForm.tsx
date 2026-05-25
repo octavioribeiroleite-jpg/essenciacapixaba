@@ -38,6 +38,16 @@ async function fetchImageInBackground(productId: string, userId: string, name: s
   }
 }
 
+async function fetchDetailsInBackground(productId: string, userId: string, name: string) {
+  try {
+    await supabase.functions.invoke("fetch-perfume-details", {
+      body: { productId, userId, name },
+    });
+  } catch {
+    // silencioso
+  }
+}
+
 async function findExistingProduct(
   userId: string,
   name: string,
@@ -170,6 +180,7 @@ export default function ProductForm() {
         if (!image_url) {
           fetchImageInBackground(inserted.id, user.id, name.trim(), brand.trim() || null);
         }
+        fetchDetailsInBackground(inserted.id, user.id, name.trim());
       }
       return { merged: false };
     },
@@ -375,6 +386,7 @@ export default function ProductForm() {
               note: `Estoque inicial: ${qty} frasco(s)`,
             });
             fetchImageInBackground(ins.id, user.id, ins.name, ins.brand);
+            fetchDetailsInBackground(ins.id, user.id, ins.name);
           }
           created++;
         }
