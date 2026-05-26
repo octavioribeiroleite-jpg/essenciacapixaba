@@ -55,6 +55,59 @@ export default function Reports() {
   const [editMov, setEditMov] = useState<any | null>(null);
   const [editMovMl, setEditMovMl] = useState("");
   const [editMovNote, setEditMovNote] = useState("");
+  const [editSale, setEditSale] = useState<any | null>(null);
+  const [editSaleCustomer, setEditSaleCustomer] = useState("");
+  const [editSaleMethod, setEditSaleMethod] = useState<"cash" | "card" | "split">("cash");
+  const [editSaleStatus, setEditSaleStatus] = useState<"paid" | "pending">("paid");
+  const [editSaleDueDate, setEditSaleDueDate] = useState("");
+  const [editSalePrice, setEditSalePrice] = useState("");
+
+  const openEditSale = (sale: any) => {
+    setEditSale(sale);
+    setEditSaleCustomer(sale.customer_name || "");
+    setEditSaleMethod((sale.payment_method as any) || "cash");
+    setEditSaleStatus((sale.payment_status as any) || "paid");
+    setEditSaleDueDate(sale.due_date || "");
+    setEditSalePrice(String(sale.sale_price));
+  };
+
+  const updateSale = useMutation({
+    mutationFn: async () => {
+      if (!editSale) throw new Error("Erro");
+      const priceNum = parseFloat(editSalePrice);
+      if (isNaN(priceNum) || priceNum < 0) throw new Error("Valor inválido");
+      const isSplit = editSaleMethod === "split";
+      const status = isSplit ? editSaleStatus : "paid";
+      const amountPaid = status === "paid"
+        ? priceNum
+        : isSplit ? Math.round((priceNum / 2) * 100) / 100 : 0;
+      const amountDue = Math.round((priceNum - amountPaid) * 100) / 100;
+      if (isSplit && status === "pending" && !editSaleDueDate) {
+        throw new Error("Informe a data do 2º pagamento");
+      }
+      const { error } = await supabase
+        .from("sales")
+        .update({
+          customer_name: editSaleCustomer.trim() || null,
+          payment_method: editSaleMethod,
+          payment_status: status,
+          amount_paid: amountPaid,
+          amount_due: amountDue,
+          sale_price: priceNum,
+          due_date: isSplit && status === "pending" ? editSaleDueDate : null,
+        })
+        .eq("id", editSale.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["report-sales"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-month"] });
+      toast.success("Venda atualizada!");
+      setEditSale(null);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   const startDate = period === "week"
     ? subDays(new Date(), 7)
