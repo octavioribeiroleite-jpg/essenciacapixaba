@@ -34,6 +34,7 @@ export default function Sales() {
   const [customerName, setCustomerName] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "split">("cash");
   const [dueDate, setDueDate] = useState("");
+  const [isPaid, setIsPaid] = useState(true);
 
   const { data: products } = useQuery({
     queryKey: ["products"],
@@ -64,6 +65,7 @@ export default function Sales() {
     setPrice(perFrasco(p.sale_price_per_ml).toFixed(2));
     setCustomerName("");
     setPaymentMethod("cash");
+    setIsPaid(true);
     const d = new Date();
     d.setMonth(d.getMonth() + 1);
     setDueDate(d.toISOString().slice(0, 10));
@@ -87,12 +89,17 @@ export default function Sales() {
       if (mlSold > Number(selected.current_ml)) throw new Error("Estoque insuficiente!");
       if (isNaN(priceNum) || priceNum < 0) throw new Error("Informe o valor da venda");
       if (paymentMethod === "split" && !dueDate) throw new Error("Informe a data do 2º pagamento");
+      if (paymentMethod !== "split" && !isPaid && !dueDate) throw new Error("Informe a data prevista de pagamento");
 
       const costPrice = mlSold * Number(selected.cost_per_ml);
       const isSplit = paymentMethod === "split";
-      const amountPaid = isSplit ? Math.round((priceNum / 2) * 100) / 100 : priceNum;
-      const amountDue = isSplit ? Math.round((priceNum - amountPaid) * 100) / 100 : 0;
-      const paymentStatus = isSplit ? "pending" : "paid";
+      const amountPaid = isSplit
+        ? Math.round((priceNum / 2) * 100) / 100
+        : isPaid
+          ? priceNum
+          : 0;
+      const amountDue = Math.round((priceNum - amountPaid) * 100) / 100;
+      const paymentStatus = isSplit || !isPaid ? "pending" : "paid";
 
       const { data: saleRow, error: saleError } = await supabase
         .from("sales")
@@ -107,7 +114,7 @@ export default function Sales() {
           payment_status: paymentStatus,
           amount_paid: amountPaid,
           amount_due: amountDue,
-          due_date: isSplit ? dueDate : null,
+          due_date: isSplit ? dueDate : !isPaid ? dueDate : null,
         })
         .select("id")
         .single();
@@ -335,6 +342,41 @@ export default function Sales() {
                       className="bg-secondary border-border"
                     />
                   </div>
+                </div>
+              )}
+
+              {paymentMethod !== "split" && (
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground block">Status do pagamento</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={isPaid ? "default" : "secondary"}
+                      className="text-xs"
+                      onClick={() => setIsPaid(true)}
+                    >
+                      Pago
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={!isPaid ? "default" : "secondary"}
+                      className="text-xs"
+                      onClick={() => setIsPaid(false)}
+                    >
+                      Pendente
+                    </Button>
+                  </div>
+                  {!isPaid && (
+                    <div className="rounded-lg bg-warning/10 border border-warning/30 p-3">
+                      <label className="text-xs text-muted-foreground mb-1 block">Data prevista de pagamento</label>
+                      <Input
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                        className="bg-secondary border-border"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
