@@ -22,9 +22,6 @@ Deno.serve(async (req) => {
       whatsapp,
     } = body ?? {};
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
-
     const fmtDate = (d?: string | null) => {
       if (!d) return null;
       const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -55,16 +52,7 @@ Deno.serve(async (req) => {
       whatsapp_loja: whatsapp || "+55 27 98876-7528",
     };
 
-    const systemPrompt =
-      "Você é uma vendedora de perfumes cordial e profissional da Essência Capixaba. " +
-      "Gere uma mensagem curta de cobrança/lembrete de pagamento para enviar via WhatsApp, em português do Brasil. " +
-      "Use tom gentil, próximo e respeitoso (sem ser invasivo). Use emojis com moderação (✨💛🧴📅💳). " +
-      "Inclua: cumprimento personalizado com o nome do cliente, lembrete do produto comprado, detalhamento dos valores (total, pago, pendente), " +
-      "data de vencimento quando houver, e formas de pagamento (PIX / Dinheiro). Finalize agradecendo. " +
-      "Se estiver em atraso, mantenha o tom gentil mas mencione a data discretamente. " +
-      "NÃO invente informações. Use apenas os dados fornecidos. Retorne apenas o texto da mensagem, sem aspas, sem markdown.";
-
-    const buildFallback = () => {
+    const buildMessage = () => {
       const linhas: string[] = [];
       linhas.push(`Olá ${ctx.cliente}! ✨`);
       linhas.push("");
@@ -85,39 +73,7 @@ Deno.serve(async (req) => {
       return linhas.join("\n");
     };
 
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Dados da venda:\n${JSON.stringify(ctx, null, 2)}` },
-        ],
-      }),
-    });
-
-    if (!resp.ok) {
-      const t = await resp.text().catch(() => "");
-      console.error("AI error:", resp.status, t);
-      const notice =
-        resp.status === 402
-          ? "Créditos de IA esgotados — usando modelo padrão."
-          : resp.status === 429
-            ? "Limite de requisições — usando modelo padrão."
-            : "IA indisponível — usando modelo padrão.";
-      return new Response(
-        JSON.stringify({ message: buildFallback(), fallback: true, notice }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const data = await resp.json();
-    const message: string = data?.choices?.[0]?.message?.content?.trim() ?? "";
-    return new Response(JSON.stringify({ message: message || buildFallback(), fallback: !message }), {
+    return new Response(JSON.stringify({ message: buildMessage() }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

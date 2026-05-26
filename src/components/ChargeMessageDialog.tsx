@@ -88,7 +88,7 @@ export function ChargeMessageDialog({ open, onOpenChange, payload }: Props) {
         {loading ? (
           <div className="py-10 flex flex-col items-center gap-2 text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            <p className="text-sm">Gerando mensagem com IA...</p>
+            <p className="text-sm">Gerando mensagem...</p>
           </div>
         ) : (
           <div className="space-y-3">
