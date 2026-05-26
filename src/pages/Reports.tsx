@@ -505,6 +505,60 @@ export default function Reports() {
       </div>
 
       {/* Stock entries */}
+      {pendingSales && pendingSales.length > 0 && (
+        <div className="bg-card rounded-2xl border border-amber-300/60 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-600" />
+            <h2 className="text-sm font-semibold text-foreground">Pagamentos pendentes</h2>
+            <span className="ml-auto text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+              {pendingSales.length}
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {pendingSales.map((sale: any) => {
+              const due = sale.due_date ? new Date(sale.due_date + "T00:00:00") : null;
+              const overdue = due && due < new Date(new Date().toDateString());
+              return (
+                <div key={sale.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-amber-50/50 transition-colors">
+                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
+                    {sale.products?.image_url ? (
+                      <img src={sale.products.image_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-amber-100">
+                        <Clock className="w-4 h-4 text-amber-600" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {sale.customer_name || "Cliente"} · {sale.products?.name || "?"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Pago: R$ {Number(sale.amount_paid).toFixed(2)} · Resta:{" "}
+                      <span className="font-bold text-amber-700">R$ {Number(sale.amount_due).toFixed(2)}</span>
+                      {due && (
+                        <> · <span className={overdue ? "text-red-600 font-semibold" : ""}>
+                          {overdue ? "Atrasado " : "Vence "}{format(due, "dd/MM/yyyy", { locale: ptBR })}
+                        </span></>
+                      )}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs gap-1 shrink-0"
+                    onClick={() => markPaid.mutate(sale)}
+                    disabled={markPaid.isPending}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Pagou
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Package className="w-4 h-4 text-primary" />
