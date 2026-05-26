@@ -611,6 +611,12 @@ export default function Reports() {
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" /> Pagou
                   </Button>
+                  <button
+                    onClick={() => openEditSale(sale)}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               );
             })}
@@ -739,6 +745,126 @@ export default function Reports() {
                 disabled={updateMovement.isPending}
               >
                 {updateMovement.isPending ? "Salvando..." : "Salvar alterações"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit sale dialog */}
+      <Dialog open={!!editSale} onOpenChange={(o) => !o && setEditSale(null)}>
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar venda</DialogTitle>
+          </DialogHeader>
+          {editSale && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                {editSale.products?.name} · {Number(editSale.ml_sold).toFixed(0)}ml
+              </p>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Cliente</label>
+                <Input
+                  value={editSaleCustomer}
+                  onChange={(e) => setEditSaleCustomer(e.target.value)}
+                  placeholder="Nome do cliente"
+                  maxLength={100}
+                  className="rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Valor total (R$)</label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  value={editSalePrice}
+                  onChange={(e) => setEditSalePrice(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Forma de pagamento</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant={editSaleMethod === "cash" ? "default" : "secondary"}
+                    className="text-xs flex-col h-auto py-2"
+                    onClick={() => setEditSaleMethod("cash")}
+                  >
+                    <Banknote className="h-4 w-4 mb-1" />
+                    Dinheiro
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={editSaleMethod === "card" ? "default" : "secondary"}
+                    className="text-xs flex-col h-auto py-2"
+                    onClick={() => setEditSaleMethod("card")}
+                  >
+                    <CreditCard className="h-4 w-4 mb-1" />
+                    Cartão
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={editSaleMethod === "split" ? "default" : "secondary"}
+                    className="text-xs flex-col h-auto py-2"
+                    onClick={() => setEditSaleMethod("split")}
+                  >
+                    <SplitSquareHorizontal className="h-4 w-4 mb-1" />
+                    50/50
+                  </Button>
+                </div>
+              </div>
+
+              {editSaleMethod === "split" && (
+                <div className="rounded-lg bg-muted/40 border border-border p-3 space-y-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={editSaleStatus === "pending" ? "default" : "secondary"}
+                        className="text-xs"
+                        onClick={() => setEditSaleStatus("pending")}
+                      >
+                        Pendente
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={editSaleStatus === "paid" ? "default" : "secondary"}
+                        className="text-xs"
+                        onClick={() => setEditSaleStatus("paid")}
+                      >
+                        Quitado
+                      </Button>
+                    </div>
+                  </div>
+                  {editSaleStatus === "pending" && (
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Data do 2º pagamento</label>
+                      <Input
+                        type="date"
+                        value={editSaleDueDate}
+                        onChange={(e) => setEditSaleDueDate(e.target.value)}
+                        className="rounded-xl"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <Button
+                onClick={() => updateSale.mutate()}
+                className="w-full rounded-xl"
+                disabled={updateSale.isPending}
+              >
+                {updateSale.isPending ? "Salvando..." : "Salvar alterações"}
               </Button>
             </div>
           )}
