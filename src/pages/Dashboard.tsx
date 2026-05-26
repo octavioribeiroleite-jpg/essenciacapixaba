@@ -263,17 +263,17 @@ export default function Dashboard() {
       </div>
 
       <button
-        onClick={() => navigate("/products")}
+        onClick={() => navigate("/catalogo")}
         className="fade-in hover-lift w-full flex items-center justify-between bg-card border border-border/60 rounded-2xl px-4 py-4 hover:border-primary/50 hover:shadow-md transition-all"
       >
         <div className="flex items-center gap-3">
           <span className="text-2xl">🧴</span>
           <div className="text-left">
             <p className="text-sm font-semibold text-foreground">
-              Ver Catálogo
+              Abrir Catálogo Público
             </p>
             <p className="text-xs text-muted-foreground">
-              {totalProducts} produtos cadastrados
+              {totalProducts} produtos · página dos clientes
             </p>
           </div>
         </div>

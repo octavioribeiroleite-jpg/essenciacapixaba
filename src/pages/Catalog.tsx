@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
 import {
   Search, MessageCircle, Share2, Sparkles, Droplet, User, Clock, Wind,
-  SlidersHorizontal, GitCompare, Check, CalendarClock,
+  SlidersHorizontal, GitCompare, Check, CalendarClock, Copy,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -63,6 +63,8 @@ export default function Catalog() {
   const [sortBy, setSortBy] = useState<SortOption>("az");
   const [compareList, setCompareList] = useState<Product[]>([]);
   const [showCompare, setShowCompare] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [qrLargeOpen, setQrLargeOpen] = useState(false);
   const { id: routeId } = useParams();
   const navigate = useNavigate();
 
@@ -146,11 +148,28 @@ export default function Catalog() {
 
   const waLink = (msg: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
 
-  const shareCatalog = async () => {
-    const url = `${window.location.origin}/catalogo`;
+  const catalogUrl = typeof window !== "undefined" ? `${window.location.origin}/catalogo` : "";
+  const qrUrl = (size: number) =>
+    `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=10&data=${encodeURIComponent(catalogUrl)}`;
+
+  const shareCatalog = () => setShareOpen(true);
+
+  const copyCatalogLink = async () => {
     try {
-      if (navigator.share) await navigator.share({ title: "Essência Capixaba", url });
-      else { await navigator.clipboard.writeText(url); toast.success("Link copiado!"); }
+      await navigator.clipboard.writeText(catalogUrl);
+      toast.success("Link copiado!");
+    } catch {
+      toast.error("Não foi possível copiar");
+    }
+  };
+
+  const nativeShareCatalog = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Essência Capixaba", url: catalogUrl });
+      } else {
+        await copyCatalogLink();
+      }
     } catch { /* ignored */ }
   };
 
@@ -808,6 +827,69 @@ export default function Catalog() {
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Compartilhar catálogo (QR + copiar link) */}
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent className="max-w-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <Share2 className="w-5 h-5 text-primary" />
+            <h2 className="text-base font-bold text-foreground">Compartilhar catálogo</h2>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setQrLargeOpen(true)}
+            className="mx-auto block bg-white p-3 rounded-2xl border border-border shadow-sm hover:shadow-md transition-shadow"
+            aria-label="Ampliar QR Code"
+          >
+            <img
+              src={qrUrl(260)}
+              alt="QR Code do catálogo"
+              className="w-[220px] h-[220px] block"
+            />
+          </button>
+          <p className="text-center text-[11px] text-muted-foreground mt-2">
+            Toque no QR Code para ampliar
+          </p>
+
+          <div className="mt-4 flex items-center gap-2 bg-secondary/60 border border-border rounded-xl px-3 py-2">
+            <span className="text-xs text-foreground truncate flex-1">{catalogUrl}</span>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={copyCatalogLink}
+              className="inline-flex items-center justify-center gap-1.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl py-2.5 hover:bg-primary/90 transition-colors"
+            >
+              <Copy className="w-4 h-4" />
+              Copiar link
+            </button>
+            <button
+              type="button"
+              onClick={nativeShareCatalog}
+              className="inline-flex items-center justify-center gap-1.5 border border-border bg-card text-sm font-semibold rounded-xl py-2.5 hover:bg-secondary transition-colors"
+            >
+              <Share2 className="w-4 h-4" />
+              Compartilhar
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: QR Code ampliado */}
+      <Dialog open={qrLargeOpen} onOpenChange={setQrLargeOpen}>
+        <DialogContent className="max-w-md p-4">
+          <div className="bg-white rounded-2xl p-4 flex items-center justify-center">
+            <img
+              src={qrUrl(600)}
+              alt="QR Code do catálogo ampliado"
+              className="w-full h-auto max-w-[420px]"
+            />
+          </div>
+          <p className="text-center text-xs text-muted-foreground mt-3 break-all">{catalogUrl}</p>
         </DialogContent>
       </Dialog>
     </div>
