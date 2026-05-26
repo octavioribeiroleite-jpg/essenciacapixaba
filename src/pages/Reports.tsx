@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   BarChart3, Trash2, Pencil, ArrowUp, Settings2,
   TrendingUp, DollarSign, Droplets, ShoppingBag, Trophy, Package,
+  Clock, CheckCircle2, User, Banknote, CreditCard, SplitSquareHorizontal,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -112,6 +113,40 @@ export default function Reports() {
   const totalSales = sales?.length ?? 0;
 
   const recentSales = sales ? [...sales].reverse().slice(0, 20) : [];
+
+  const { data: pendingSales } = useQuery({
+    queryKey: ["pending-sales"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sales")
+        .select("*, products(name, image_url)")
+        .eq("payment_status", "pending")
+        .order("due_date", { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const markPaid = useMutation({
+    mutationFn: async (sale: any) => {
+      const { error } = await supabase
+        .from("sales")
+        .update({
+          payment_status: "paid",
+          amount_paid: Number(sale.sale_price),
+          amount_due: 0,
+        })
+        .eq("id", sale.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-sales"] });
+      queryClient.invalidateQueries({ queryKey: ["report-sales"] });
+      toast.success("Pagamento confirmado!");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   const { data: entries } = useQuery({
     queryKey: ["report-entries", period],
