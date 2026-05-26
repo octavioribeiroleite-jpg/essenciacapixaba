@@ -696,58 +696,83 @@ export default function Reports() {
               {pendingSales.length}
             </span>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {pendingSales.map((sale: any) => {
               const due = sale.due_date ? new Date(sale.due_date + "T00:00:00") : null;
               const overdue = due && due < new Date(new Date().toDateString());
               return (
-                <div key={sale.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-amber-50/50 transition-colors">
-                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
-                    {sale.products?.image_url ? (
-                      <img src={sale.products.image_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-amber-100">
-                        <Clock className="w-4 h-4 text-amber-600" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {sale.customer_name || "Cliente"} · {sale.products?.name || "?"}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      Pago: R$ {Number(sale.amount_paid).toFixed(2)} · Resta:{" "}
-                      <span className="font-bold text-amber-700">R$ {Number(sale.amount_due).toFixed(2)}</span>
-                      {due && (
-                        <> · <span className={overdue ? "text-red-600 font-semibold" : ""}>
-                          {overdue ? "Atrasado " : "Vence "}{format(due, "dd/MM/yyyy", { locale: ptBR })}
-                        </span></>
+                <div
+                  key={sale.id}
+                  className={`rounded-xl border p-3 space-y-2.5 transition-colors ${
+                    overdue
+                      ? "border-red-200 bg-red-50/40"
+                      : "border-amber-200/70 bg-amber-50/30 hover:bg-amber-50/60"
+                  }`}
+                >
+                  {/* Top row: image + info + amount */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
+                      {sale.products?.image_url ? (
+                        <img src={sale.products.image_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-amber-100">
+                          <Clock className="w-4 h-4 text-amber-600" />
+                        </div>
                       )}
-                    </p>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {sale.customer_name || "Cliente"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {sale.products?.name || "?"}
+                      </p>
+                      {due && (
+                        <p className={`text-[11px] mt-0.5 font-medium ${overdue ? "text-red-600" : "text-muted-foreground"}`}>
+                          {overdue ? "Atrasado · " : "Vence "}
+                          {format(due, "dd/MM/yyyy", { locale: ptBR })}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Resta</p>
+                      <p className="text-base font-bold text-amber-700 tabular-nums leading-tight">
+                        R$ {Number(sale.amount_due).toFixed(2)}
+                      </p>
+                      {Number(sale.amount_paid) > 0 && (
+                        <p className="text-[10px] text-muted-foreground tabular-nums">
+                          Pago R$ {Number(sale.amount_paid).toFixed(2)}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 text-xs gap-1 shrink-0"
-                    onClick={() => markPaid.mutate(sale)}
-                    disabled={markPaid.isPending}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Pagou
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="h-8 text-xs gap-1 shrink-0"
-                    onClick={() => openCharge(sale)}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" /> Cobrança
-                  </Button>
-                  <button
-                    onClick={() => openEditSale(sale)}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
+                  {/* Bottom row: actions */}
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs gap-1 flex-1 min-w-0"
+                      onClick={() => markPaid.mutate(sale)}
+                      disabled={markPaid.isPending}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Pagou
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-8 text-xs gap-1 flex-1 min-w-0"
+                      onClick={() => openCharge(sale)}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Cobrança
+                    </Button>
+                    <button
+                      onClick={() => openEditSale(sale)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0 border border-border/60"
+                      aria-label="Editar venda"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               );
             })}
