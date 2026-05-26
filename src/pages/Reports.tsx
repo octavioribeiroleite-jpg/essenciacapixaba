@@ -704,7 +704,9 @@ export default function Reports() {
             })}
           </div>
         </div>
-      )}
+        </div>
+        );
+      })()}
 
       <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
         <div className="flex items-center gap-2">
