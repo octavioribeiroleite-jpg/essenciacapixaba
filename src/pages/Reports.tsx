@@ -1,9 +1,11 @@
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Trash2, Pencil, ArrowUp, Settings2, Package } from "lucide-react";
+import {
+  BarChart3, Trash2, Pencil, ArrowUp, Settings2,
+  TrendingUp, DollarSign, Droplets, ShoppingBag, Trophy, Package,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +30,23 @@ import { ptBR } from "date-fns/locale";
 
 type Period = "week" | "month" | "all";
 
+const PERIOD_LABELS: { key: Period; label: string }[] = [
+  { key: "week", label: "7 dias" },
+  { key: "month", label: "Este mês" },
+  { key: "all", label: "Tudo" },
+];
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-card border border-border/60 rounded-xl shadow-lg px-3 py-2 text-xs">
+      <p className="font-semibold text-foreground mb-1">{label}</p>
+      <p className="text-emerald-600">Receita: R$ {Number(payload[0]?.value ?? 0).toFixed(2)}</p>
+      <p className="text-violet-600">Lucro: R$ {Number(payload[1]?.value ?? 0).toFixed(2)}</p>
+    </div>
+  );
+};
+
 export default function Reports() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -47,7 +66,7 @@ export default function Reports() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sales")
-        .select("*, products(name, brand)")
+        .select("*, products(name, brand, image_url)")
         .gte("created_at", startDate.toISOString())
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -72,15 +91,16 @@ export default function Reports() {
   }, []) ?? [];
 
   // Top products
-  const topProducts = sales?.reduce((acc: Record<string, { name: string; ml: number; revenue: number }>, sale: any) => {
+  const topProducts = sales?.reduce((acc: Record<string, { name: string; image_url?: string | null; ml: number; revenue: number; qty: number }>, sale: any) => {
     const pid = sale.product_id;
     if (!acc[pid]) {
-      acc[pid] = { name: sale.products?.name || "?", ml: 0, revenue: 0 };
+      acc[pid] = { name: sale.products?.name || "?", image_url: sale.products?.image_url, ml: 0, revenue: 0, qty: 0 };
     }
     acc[pid].ml += Number(sale.ml_sold);
     acc[pid].revenue += Number(sale.sale_price);
+    acc[pid].qty += 1;
     return acc;
-  }, {} as Record<string, { name: string; ml: number; revenue: number }>);
+  }, {} as Record<string, { name: string; image_url?: string | null; ml: number; revenue: number; qty: number }>);
 
   const topList = topProducts
     ? Object.values(topProducts).sort((a, b) => b.revenue - a.revenue).slice(0, 5)
@@ -89,6 +109,7 @@ export default function Reports() {
   const totalRevenue = sales?.reduce((s, sale) => s + Number(sale.sale_price), 0) ?? 0;
   const totalProfit = sales?.reduce((s, sale) => s + Number(sale.sale_price) - Number(sale.cost_price), 0) ?? 0;
   const totalMl = sales?.reduce((s, sale) => s + Number(sale.ml_sold), 0) ?? 0;
+  const totalSales = sales?.length ?? 0;
 
   const recentSales = sales ? [...sales].reverse().slice(0, 20) : [];
 
@@ -252,128 +273,175 @@ export default function Reports() {
   });
 
   return (
-    <div className="space-y-4 lg:max-w-7xl lg:mx-auto">
-      <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
-        <BarChart3 className="h-5 w-5 text-primary" />
-        Relatórios
-      </h1>
+    <div className="p-4 lg:p-0 space-y-4 max-w-lg lg:max-w-7xl mx-auto pb-24 lg:pb-8">
+      {/* Header */}
+      <div className="space-y-3">
+        <div>
+          <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary" /> Relatórios
+          </h1>
+          <p className="text-xs text-muted-foreground">Acompanhe vendas e estoque</p>
+        </div>
 
-      {/* Period filter */}
-      <div className="flex gap-2">
-        {([["week", "Semana"], ["month", "Mês"], ["all", "Tudo"]] as const).map(([key, label]) => (
-          <Button
-            key={key}
-            variant={period === key ? "default" : "secondary"}
-            size="sm"
-            onClick={() => setPeriod(key)}
-          >
-            {label}
-          </Button>
-        ))}
-      </div>
-
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-2">
-        <Card className="glass-card">
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Receita</p>
-            <p className="text-sm font-bold text-foreground">R$ {totalRevenue.toFixed(2)}</p>
-          </CardContent>
-        </Card>
-        <Card className="glass-card">
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Lucro</p>
-            <p className="text-sm font-bold text-success">R$ {totalProfit.toFixed(2)}</p>
-          </CardContent>
-        </Card>
-        <Card className="glass-card">
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">ML Vendidos</p>
-            <p className="text-sm font-bold text-primary">{totalMl.toFixed(0)}ml</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Chart */}
-      {chartData.length > 0 && (
-        <Card className="glass-card">
-          <CardContent className="p-4">
-            <h2 className="text-sm font-medium text-foreground mb-3">Vendas por Dia</h2>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(20 10% 18%)" />
-                <XAxis dataKey="day" tick={{ fontSize: 10, fill: "hsl(30 10% 55%)" }} />
-                <YAxis tick={{ fontSize: 10, fill: "hsl(30 10% 55%)" }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(20 10% 8%)",
-                    border: "1px solid hsl(20 10% 18%)",
-                    borderRadius: "8px",
-                    color: "hsl(40 20% 92%)",
-                  }}
-                  formatter={(value: number) => `R$ ${value.toFixed(2)}`}
-                />
-                <Bar dataKey="receita" fill="hsl(38 80% 55%)" radius={[4, 4, 0, 0]} name="Receita" />
-                <Bar dataKey="lucro" fill="hsl(142 76% 36%)" radius={[4, 4, 0, 0]} name="Lucro" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Top Products */}
-      <div>
-        <h2 className="text-sm font-medium text-foreground mb-3">Mais Vendidos</h2>
-        {topList.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma venda no período.</p>}
-        <div className="space-y-2">
-          {topList.map((item, i) => (
-            <Card key={i} className="glass-card">
-              <CardContent className="p-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-lg font-bold text-primary">#{i + 1}</span>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.ml.toFixed(0)}ml vendidos</p>
-                  </div>
-                </div>
-                <p className="text-sm font-bold text-foreground">R$ {item.revenue.toFixed(2)}</p>
-              </CardContent>
-            </Card>
+        {/* Segmented period filter */}
+        <div className="inline-flex bg-muted/60 rounded-xl p-1 gap-1">
+          {PERIOD_LABELS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setPeriod(key)}
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-all ${
+                period === key
+                  ? "bg-card shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+            </button>
           ))}
         </div>
       </div>
 
-      {/* Recent sales with delete */}
-      <div>
-        <h2 className="text-sm font-medium text-foreground mb-3">Vendas recentes</h2>
-        {recentSales.length === 0 && (
-          <p className="text-xs text-muted-foreground">Nenhuma venda no período.</p>
-        )}
-        <div className="space-y-2">
-          {recentSales.map((sale: any) => (
-            <Card key={sale.id} className="glass-card">
-              <CardContent className="p-3 flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {sale.products?.name || "?"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {format(new Date(sale.created_at), "dd/MM HH:mm", { locale: ptBR })} ·{" "}
-                    {Number(sale.ml_sold).toFixed(0)}ml · R$ {Number(sale.sale_price).toFixed(2)}
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-4">
+        {[
+          { label: "Receita", value: `R$ ${totalRevenue.toFixed(2)}`, icon: DollarSign, gradient: "from-emerald-400 to-green-500" },
+          { label: "Lucro", value: `R$ ${totalProfit.toFixed(2)}`, icon: TrendingUp, gradient: "from-violet-400 to-purple-500" },
+          { label: "ML Vendidos", value: `${totalMl.toFixed(0)}ml`, icon: Droplets, gradient: "from-sky-400 to-blue-500" },
+          { label: "Vendas", value: String(totalSales), icon: ShoppingBag, gradient: "from-amber-400 to-orange-500" },
+        ].map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <div key={i} className="bg-card rounded-2xl border border-border/60 p-3.5 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  {s.label}
+                </span>
+                <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${s.gradient} flex items-center justify-center shadow-sm`}>
+                  <Icon className="w-3.5 h-3.5 text-white" />
+                </div>
+              </div>
+              <p className="text-base font-bold text-foreground tabular-nums leading-tight">{s.value}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Chart */}
+      {chartData.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-primary" /> Vendas por dia
+          </h2>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={chartData} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="day" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--muted))", radius: 8 }} />
+              <Bar dataKey="receita" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} name="Receita" />
+              <Bar dataKey="lucro" fill="hsl(142 70% 45%)" radius={[8, 8, 0, 0]} name="Lucro" />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex items-center justify-center gap-4 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-primary" /> Receita
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: "hsl(142 70% 45%)" }} /> Lucro
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Top products */}
+      {topList.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-amber-500" /> Mais vendidos
+          </h2>
+          <div className="space-y-2">
+            {topList.map((item: any, i) => {
+              const medals = ["bg-gradient-to-br from-amber-400 to-yellow-500", "bg-gradient-to-br from-slate-300 to-slate-400", "bg-gradient-to-br from-orange-400 to-amber-600"];
+              const medal = medals[i] ?? "bg-muted";
+              return (
+                <div key={i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/40 transition-colors">
+                  <div className={`w-6 h-6 rounded-full ${medal} flex items-center justify-center text-[11px] font-bold text-white shadow-sm shrink-0`}>
+                    {i + 1}
+                  </div>
+                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                        <span className="text-sm font-bold text-primary">{item.name.charAt(0)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {item.qty} venda{item.qty !== 1 ? "s" : ""} · {item.ml.toFixed(0)}ml
+                    </p>
+                  </div>
+                  <p className="text-sm font-bold text-emerald-600 tabular-nums shrink-0">
+                    R$ {item.revenue.toFixed(2)}
                   </p>
                 </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Recent sales */}
+      <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <ShoppingBag className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">Vendas recentes</h2>
+          <span className="ml-auto text-[10px] font-semibold text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
+            {recentSales.length}
+          </span>
+        </div>
+
+        {recentSales.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-3xl mb-1">📦</p>
+            <p className="text-xs text-muted-foreground">Nenhuma venda no período.</p>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {recentSales.map((sale: any) => (
+              <div key={sale.id} className="group flex items-center gap-3 p-2 rounded-xl hover:bg-muted/40 transition-colors">
+                <div className="w-10 h-10 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
+                  {sale.products?.image_url ? (
+                    <img src={sale.products.image_url} alt={sale.products?.name ?? ""} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                      <span className="text-sm font-bold text-primary">{sale.products?.name?.charAt(0) ?? "?"}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground truncate">{sale.products?.name || "?"}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {format(new Date(sale.created_at), "dd/MM · HH:mm", { locale: ptBR })}
+                    {" · "}{Number(sale.ml_sold).toFixed(0)}ml
+                  </p>
+                </div>
+                <p className="text-sm font-bold text-emerald-600 tabular-nums shrink-0">
+                  R$ {Number(sale.sale_price).toFixed(2)}
+                </p>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <button className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Excluir venda?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        {Number(sale.ml_sold).toFixed(0)}ml de {sale.products?.name || "?"} voltarão
-                        ao estoque. Esta ação não pode ser desfeita.
+                        {Number(sale.ml_sold).toFixed(0)}ml de {sale.products?.name || "?"} voltarão ao estoque.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -381,75 +449,79 @@ export default function Reports() {
                       <AlertDialogAction
                         onClick={() => deleteSale.mutate(sale)}
                         disabled={deleteSale.isPending}
+                        className="bg-red-500 hover:bg-red-600"
                       >
                         Excluir
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Stock entries history */}
-      <div>
-        <h2 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-          <Package className="h-4 w-4 text-primary" />
-          Entradas de estoque
-        </h2>
-        {(!entries || entries.length === 0) && (
-          <p className="text-xs text-muted-foreground">Nenhuma entrada no período.</p>
-        )}
-        <div className="space-y-2">
-          {entries?.map((m: any) => {
-            const isAdj = m.type === "adjustment";
-            const Icon = isAdj ? Settings2 : ArrowUp;
-            return (
-              <Card key={m.id} className="glass-card">
-                <CardContent className="p-3 flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1 flex items-start gap-2">
-                    <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${isAdj ? "text-muted-foreground" : "text-success"}`} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {m.products?.name || "?"}
-                        <span className="ml-2 text-success font-bold">
-                          +{Number(m.ml_change).toFixed(0)}ml
-                        </span>
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {format(new Date(m.created_at), "dd/MM HH:mm", { locale: ptBR })} ·{" "}
-                        {MOVEMENT_LABEL[m.type as MovementType]}
-                        {m.note ? ` · ${m.note}` : ""}
-                      </p>
+      {/* Stock entries */}
+      <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Package className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">Entradas de estoque</h2>
+          <span className="ml-auto text-[10px] font-semibold text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
+            {entries?.length ?? 0}
+          </span>
+        </div>
+
+        {(!entries || entries.length === 0) ? (
+          <div className="text-center py-6">
+            <p className="text-3xl mb-1">📋</p>
+            <p className="text-xs text-muted-foreground">Nenhuma entrada no período.</p>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {entries?.map((m: any) => {
+              const isAdj = m.type === "adjustment";
+              const Icon = isAdj ? Settings2 : ArrowUp;
+              return (
+                <div key={m.id} className="group flex items-center gap-3 p-2 rounded-xl hover:bg-muted/40 transition-colors">
+                  <div className={`w-9 h-9 rounded-xl shrink-0 flex items-center justify-center ${
+                    isAdj ? "bg-slate-100 text-slate-600" : "bg-sky-100 text-sky-600"
+                  }`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground truncate">{m.products?.name || "?"}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-muted-foreground">
+                      <span className="font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded-md tabular-nums">
+                        +{Number(m.ml_change).toFixed(0)}ml
+                      </span>
+                      <span>{format(new Date(m.created_at), "dd/MM · HH:mm", { locale: ptBR })}</span>
+                      <span>· {MOVEMENT_LABEL[m.type as MovementType]}</span>
+                      {m.note && <span className="truncate">· {m.note}</span>}
                     </div>
                   </div>
-                  <div className="flex shrink-0">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
+                  <div className="flex shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
                       onClick={() => {
                         setEditMov(m);
                         setEditMovMl(String(m.ml_change));
                         setEditMovNote(m.note || "");
                       }}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
                     >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <button className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Excluir entrada?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            {Number(m.ml_change).toFixed(0)}ml de {m.products?.name || "?"} serão
-                            removidos do estoque atual. Esta ação não pode ser desfeita.
+                            {Number(m.ml_change).toFixed(0)}ml de {m.products?.name || "?"} serão removidos do estoque.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -457,6 +529,7 @@ export default function Reports() {
                           <AlertDialogAction
                             onClick={() => deleteMovement.mutate(m)}
                             disabled={deleteMovement.isPending}
+                            className="bg-red-500 hover:bg-red-600"
                           >
                             Excluir
                           </AlertDialogAction>
@@ -464,18 +537,18 @@ export default function Reports() {
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Edit movement dialog */}
       <Dialog open={!!editMov} onOpenChange={(o) => !o && setEditMov(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-foreground">Editar entrada</DialogTitle>
+            <DialogTitle>Editar entrada</DialogTitle>
           </DialogHeader>
           {editMov && (
             <div className="space-y-3">
@@ -490,10 +563,10 @@ export default function Reports() {
                   step="0.1"
                   value={editMovMl}
                   onChange={(e) => setEditMovMl(e.target.value)}
-                  className="bg-secondary border-border"
+                  className="rounded-xl"
                 />
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  A diferença será aplicada ao estoque atual automaticamente.
+                  A diferença será aplicada ao estoque automaticamente.
                 </p>
               </div>
               <div>
@@ -501,15 +574,16 @@ export default function Reports() {
                 <Input
                   value={editMovNote}
                   onChange={(e) => setEditMovNote(e.target.value)}
-                  className="bg-secondary border-border"
+                  placeholder="Opcional"
+                  className="rounded-xl"
                 />
               </div>
               <Button
-                className="w-full"
-                disabled={updateMovement.isPending}
                 onClick={() => updateMovement.mutate()}
+                className="w-full rounded-xl"
+                disabled={updateMovement.isPending}
               >
-                {updateMovement.isPending ? "Salvando..." : "Salvar"}
+                {updateMovement.isPending ? "Salvando..." : "Salvar alterações"}
               </Button>
             </div>
           )}
