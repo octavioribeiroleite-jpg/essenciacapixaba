@@ -913,6 +913,22 @@ export default function Reports() {
                 </div>
               )}
 
+              {editSaleMethod === "split" ? null : (
+                <div className="rounded-lg bg-muted/40 border border-border p-3 space-y-2">
+                  <label className="text-xs text-muted-foreground block">Status do pagamento</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" size="sm" variant={editSaleStatus === "paid" ? "default" : "secondary"} className="text-xs" onClick={() => setEditSaleStatus("paid")}>Pago</Button>
+                    <Button type="button" size="sm" variant={editSaleStatus === "pending" ? "default" : "secondary"} className="text-xs" onClick={() => setEditSaleStatus("pending")}>Pendente</Button>
+                  </div>
+                  {editSaleStatus === "pending" && (
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Data prevista</label>
+                      <Input type="date" value={editSaleDueDate} onChange={(e) => setEditSaleDueDate(e.target.value)} className="rounded-xl" />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Button
                 onClick={() => updateSale.mutate()}
                 className="w-full rounded-xl"
