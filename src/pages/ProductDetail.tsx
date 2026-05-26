@@ -52,14 +52,21 @@ const longevityToScore = (v?: string | null) => {
 const QUICK_QTYS = [1, 2, 3, 5];
 
 const OCCASION_GROUPS: { label: string; items: string[] }[] = [
-  { label: "Período do dia", items: ["Dia", "Noite"] },
-  { label: "Estação", items: ["Verão", "Inverno", "Primavera", "Outono"] },
+  { label: "Período do dia", items: ["Manhã", "Tarde", "Noite", "Qualquer hora"] },
+  { label: "Clima", items: ["Quente", "Frio", "Neutro"] },
   {
     label: "Ocasião",
-    items: ["Trabalho", "Casual", "Pós-banho", "Encontro", "Festa", "Formal", "Especial"],
+    items: [
+      "Trabalho", "Casual", "Pós-banho", "Encontro", "Festa",
+      "Formal", "Especial", "Presente", "Praia/Piscina",
+    ],
+  },
+  {
+    label: "Perfil",
+    items: ["Jovem", "Clássico", "Moderno", "Maduro", "Romântico", "Marcante"],
   },
 ];
-const MAX_OCCASIONS = 6;
+const MAX_OCCASIONS = 12;
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();

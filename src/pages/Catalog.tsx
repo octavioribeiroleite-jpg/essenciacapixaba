@@ -18,11 +18,18 @@ const publicSupabase = createClient(
 const WHATSAPP_NUMBER = "5527988767528";
 
 const OCCASION_GROUPS: { label: string; items: string[] }[] = [
-  { label: "Período do dia", items: ["Dia", "Noite"] },
-  { label: "Estação", items: ["Verão", "Inverno", "Primavera", "Outono"] },
+  { label: "Período do dia", items: ["Manhã", "Tarde", "Noite", "Qualquer hora"] },
+  { label: "Clima", items: ["Quente", "Frio", "Neutro"] },
   {
     label: "Ocasião",
-    items: ["Trabalho", "Casual", "Pós-banho", "Encontro", "Festa", "Formal", "Especial"],
+    items: [
+      "Trabalho", "Casual", "Pós-banho", "Encontro", "Festa",
+      "Formal", "Especial", "Presente", "Praia/Piscina",
+    ],
+  },
+  {
+    label: "Perfil",
+    items: ["Jovem", "Clássico", "Moderno", "Maduro", "Romântico", "Marcante"],
   },
 ];
 
