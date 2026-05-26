@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
 import {
   Search, MessageCircle, Share2, Sparkles, Droplet, User, Clock, Wind,
-  SlidersHorizontal, GitCompare, Check, CalendarClock,
+  SlidersHorizontal, GitCompare, Check, CalendarClock, Copy, QrCode, X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -63,6 +63,8 @@ export default function Catalog() {
   const [sortBy, setSortBy] = useState<SortOption>("az");
   const [compareList, setCompareList] = useState<Product[]>([]);
   const [showCompare, setShowCompare] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [qrLargeOpen, setQrLargeOpen] = useState(false);
   const { id: routeId } = useParams();
   const navigate = useNavigate();
 
@@ -146,11 +148,28 @@ export default function Catalog() {
 
   const waLink = (msg: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
 
-  const shareCatalog = async () => {
-    const url = `${window.location.origin}/catalogo`;
+  const catalogUrl = typeof window !== "undefined" ? `${window.location.origin}/catalogo` : "";
+  const qrUrl = (size: number) =>
+    `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=10&data=${encodeURIComponent(catalogUrl)}`;
+
+  const shareCatalog = () => setShareOpen(true);
+
+  const copyCatalogLink = async () => {
     try {
-      if (navigator.share) await navigator.share({ title: "Essência Capixaba", url });
-      else { await navigator.clipboard.writeText(url); toast.success("Link copiado!"); }
+      await navigator.clipboard.writeText(catalogUrl);
+      toast.success("Link copiado!");
+    } catch {
+      toast.error("Não foi possível copiar");
+    }
+  };
+
+  const nativeShareCatalog = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Essência Capixaba", url: catalogUrl });
+      } else {
+        await copyCatalogLink();
+      }
     } catch { /* ignored */ }
   };
 
