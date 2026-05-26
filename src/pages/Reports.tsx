@@ -991,6 +991,8 @@ export default function Reports() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ChargeMessageDialog open={chargeOpen} onOpenChange={setChargeOpen} payload={chargePayload} />
     </div>
   );
 }
