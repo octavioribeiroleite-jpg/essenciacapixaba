@@ -461,7 +461,14 @@ export default function Reports() {
                   <p className="text-[11px] text-muted-foreground">
                     {format(new Date(sale.created_at), "dd/MM · HH:mm", { locale: ptBR })}
                     {" · "}{Number(sale.ml_sold).toFixed(0)}ml
+                    {sale.customer_name && <> · <User className="inline w-2.5 h-2.5" /> {sale.customer_name}</>}
                   </p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    {sale.payment_method === "cash" && <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md flex items-center gap-1"><Banknote className="w-2.5 h-2.5" />Dinheiro</span>}
+                    {sale.payment_method === "card" && <span className="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded-md flex items-center gap-1"><CreditCard className="w-2.5 h-2.5" />Cartão</span>}
+                    {sale.payment_method === "split" && <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md flex items-center gap-1"><SplitSquareHorizontal className="w-2.5 h-2.5" />50/50</span>}
+                    {sale.payment_status === "pending" && <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md font-medium">Pendente</span>}
+                  </div>
                 </div>
                 <p className="text-sm font-bold text-emerald-600 tabular-nums shrink-0">
                   R$ {Number(sale.sale_price).toFixed(2)}
