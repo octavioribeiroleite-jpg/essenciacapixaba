@@ -1,7 +1,10 @@
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Package, Droplets, TrendingUp, AlertTriangle, ArrowRight, DollarSign, RefreshCw } from "lucide-react";
+import {
+  Package, Droplets, TrendingUp, AlertTriangle, ArrowRight,
+  DollarSign, RefreshCw, Sparkles, ShoppingBag, ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -37,7 +40,7 @@ export default function Dashboard() {
       startOfMonth.setHours(0, 0, 0, 0);
       const { data, error } = await supabase
         .from("sales")
-        .select("*, products(name, brand)")
+        .select("*, products(name, brand, image_url)")
         .gte("created_at", startOfMonth.toISOString())
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -51,6 +54,7 @@ export default function Dashboard() {
     products?.reduce((sum, p) => sum + Number(p.current_ml) / ML_PER_FRASCO, 0) ?? 0;
   const lowStock =
     products?.filter((p) => Number(p.current_ml) < ML_PER_FRASCO * 2) ?? [];
+  const emptyStock = lowStock.filter((p) => Number(p.current_ml) === 0);
   const monthRevenue =
     salesThisMonth?.reduce((sum, s) => sum + Number(s.sale_price), 0) ?? 0;
   const monthProfit =
@@ -94,7 +98,7 @@ export default function Dashboard() {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
-  const greetingEmoji = hour < 12 ? "👋" : hour < 18 ? "☀️" : "🌙";
+  const greetingEmoji = hour < 12 ? "🌅" : hour < 18 ? "☀️" : "🌙";
 
   const stats = [
     {
@@ -102,56 +106,66 @@ export default function Dashboard() {
       value: String(totalProducts),
       sub: "cadastrados",
       icon: Package,
-      iconColor: "text-primary",
-      cardClass: "stat-gold",
+      gradient: "from-amber-400 to-orange-500",
     },
     {
       label: "Estoque",
       value: frascoLabel,
       sub: totalFrascos === 1 ? "frasco" : "frascos",
       icon: Droplets,
-      iconColor: "text-sky-500",
-      cardClass: "stat-sky",
+      gradient: "from-sky-400 to-blue-500",
     },
     {
       label: "Receita",
       value: `R$\u00A0${monthRevenue.toFixed(2)}`,
       sub: "este mês",
       icon: DollarSign,
-      iconColor: "text-emerald-500",
-      cardClass: "stat-emerald",
+      gradient: "from-emerald-400 to-green-500",
     },
     {
       label: "Lucro",
       value: `R$\u00A0${monthProfit.toFixed(2)}`,
       sub: "este mês",
       icon: TrendingUp,
-      iconColor: "text-green-600",
-      cardClass: "stat-green",
+      gradient: "from-violet-400 to-purple-500",
     },
   ];
 
   return (
     <div className="p-4 lg:p-0 space-y-4 max-w-lg lg:max-w-7xl mx-auto pb-24 lg:pb-8">
-      <div className="fade-in pt-2">
-        <p className="text-xs text-muted-foreground capitalize">
-          {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
-        </p>
-        <h1 className="text-xl font-bold text-foreground mt-0.5">
-          {greeting} {greetingEmoji}
-        </h1>
-        <p className="text-xs text-muted-foreground">Aqui está o resumo do seu negócio</p>
-      </div>
+      {/* Header com gradiente */}
+      <div className="fade-in relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-amber-400 p-5 text-white shadow-lg">
+        <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative">
+          <p className="text-[11px] text-white/80 capitalize">
+            {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+          </p>
+          <h1 className="text-2xl font-bold mt-0.5">
+            {greeting} {greetingEmoji}
+          </h1>
+          <p className="text-xs text-white/85 mt-0.5">Aqui está o resumo do seu negócio</p>
 
-      <Button
-        onClick={() => updateAllMutation.mutate()}
-        disabled={updateAllMutation.isPending}
-        className="w-full gap-2 bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
-        variant="outline"
-      >
-        <RefreshCw className={`w-4 h-4 ${updateAllMutation.isPending ? "animate-spin" : ""}`} />
-        {updateAllMutation.isPending ? "Atualizando catálogo..." : "✨ Atualizar tudo com IA"}
-      </Button>
+          <button
+            type="button"
+            onClick={() => updateAllMutation.mutate()}
+            disabled={updateAllMutation.isPending}
+            className="mt-4 inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors border border-white/30 disabled:opacity-60"
+          >
+            {updateAllMutation.isPending ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Atualizando...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                Atualizar tudo com IA
+              </>
+            )}
+          </button>
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-4">
         {stats.map((stat, i) => {
@@ -160,13 +174,15 @@ export default function Dashboard() {
           return (
             <div
               key={i}
-              className={`fade-in ${stat.cardClass} rounded-2xl border p-3.5 flex flex-col gap-1`}
+              className="fade-in bg-card rounded-2xl border border-border/60 p-3.5 flex flex-col gap-2 hover-lift transition-shadow"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                   {stat.label}
                 </span>
-                <Icon className={`w-4 h-4 ${stat.iconColor}`} />
+                <div className={`h-8 w-8 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-sm`}>
+                  <Icon className="w-4 h-4 text-white" />
+                </div>
               </div>
               <p className={`font-bold text-foreground leading-tight ${isMoney ? "text-base" : "text-2xl"}`}>
                 {stat.value}
@@ -180,71 +196,118 @@ export default function Dashboard() {
       </div>
 
       {lowStock.length > 0 && (
-        <div className="fade-in rounded-2xl border border-amber-400/40 bg-amber-50/60 p-4 space-y-2">
-          <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle className="w-4 h-4 text-amber-500 pulse-soft" />
-            <h2 className="text-sm font-semibold text-amber-700">
-              Estoque Baixo ({lowStock.length})
-            </h2>
-          </div>
-          {lowStock.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => navigate(`/products/${p.id}`)}
-              className="w-full flex items-center justify-between rounded-xl px-3 py-2 hover:bg-amber-100/80 transition-colors text-left"
-            >
-              <div>
-                <p className="text-sm font-medium text-foreground">{p.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {p.brand || "Sem marca"}
-                </p>
-              </div>
-              <span className="text-xs font-semibold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
-                {formatFrascos(p.current_ml)}{" "}
-                {Number(p.current_ml) === ML_PER_FRASCO ? "frasco" : "frascos"}
+        <div className="fade-in rounded-2xl border border-border/60 bg-card overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500 pulse-soft" />
+              <h2 className="text-sm font-semibold text-foreground">Estoque Baixo</h2>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {emptyStock.length > 0 && (
+                <span className="text-[10px] font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
+                  {emptyStock.length} esgotado{emptyStock.length > 1 ? "s" : ""}
+                </span>
+              )}
+              <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                {lowStock.length} produto{lowStock.length > 1 ? "s" : ""}
               </span>
-            </button>
-          ))}
+            </div>
+          </div>
+          <div className="divide-y divide-border/40">
+            {lowStock.map((p) => {
+              const frascos = Math.floor(Number(p.current_ml) / ML_PER_FRASCO);
+              const isEmpty = frascos === 0;
+              const pct = Math.min(100, (Number(p.current_ml) / (ML_PER_FRASCO * 2)) * 100);
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => navigate(`/products/${p.id}`)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors text-left"
+                >
+                  <div className="h-11 w-11 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/50">
+                    {p.image_url ? (
+                      <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-amber-200 text-primary font-semibold">
+                        {p.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{p.brand || "Sem marca"}</p>
+                    <div className="mt-1.5 h-1 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${isEmpty ? "bg-red-400" : "bg-amber-400"}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        isEmpty ? "text-red-700 bg-red-100" : "text-amber-700 bg-amber-100"
+                      }`}
+                    >
+                      {isEmpty ? "Esgotado" : `${frascos} frasco${frascos !== 1 ? "s" : ""}`}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
       <div className="fade-in rounded-2xl border border-border/60 bg-card p-4 space-y-1">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-foreground">
-            Vendas Recentes
-          </h2>
+          <div className="flex items-center gap-2">
+            <ShoppingBag className="w-4 h-4 text-emerald-500" />
+            <h2 className="text-sm font-semibold text-foreground">Vendas Recentes</h2>
+          </div>
           <button
             onClick={() => navigate("/reports")}
-            className="text-xs text-primary flex items-center gap-1 hover:underline"
+            className="text-xs text-primary flex items-center gap-1 hover:underline font-medium"
           >
             Ver tudo <ArrowRight className="w-3 h-3" />
           </button>
         </div>
 
         {recentSales.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Nenhuma venda este mês.
-          </p>
+          <div className="text-center py-6">
+            <p className="text-3xl mb-1">📦</p>
+            <p className="text-sm text-muted-foreground">Nenhuma venda este mês.</p>
+          </div>
         ) : (
           <div className="space-y-1">
             {recentSales.map((sale: any) => (
               <div
                 key={sale.id}
-                className="flex items-center justify-between py-2 border-b border-border/40 last:border-0"
+                className="flex items-center gap-3 py-2 border-b border-border/40 last:border-0"
               >
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {sale.products?.name}
+                <div className="h-10 w-10 rounded-lg overflow-hidden bg-muted shrink-0 border border-border/50">
+                  {sale.products?.image_url ? (
+                    <img src={sale.products.image_url} alt={sale.products?.name ?? ""} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-amber-200 text-primary text-sm font-semibold">
+                      {sale.products?.name?.charAt(0)?.toUpperCase() ?? "?"}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {sale.products?.name ?? "—"}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground">
                     {format(new Date(sale.created_at), "dd/MM HH:mm", {
                       locale: ptBR,
                     })}{" "}
                     · -{formatFrascos(sale.ml_sold)} frasco(s)
                   </p>
                 </div>
-                <span className="text-sm font-semibold text-emerald-600">
-                  R$ {Number(sale.sale_price).toFixed(2)}
+                <span className="text-sm font-semibold text-emerald-600 shrink-0">
+                  +R$ {Number(sale.sale_price).toFixed(2)}
                 </span>
               </div>
             ))}
@@ -254,7 +317,7 @@ export default function Dashboard() {
 
       <button
         onClick={() => navigate("/products")}
-        className="fade-in hover-lift w-full flex items-center justify-between bg-card border border-border/60 rounded-2xl px-4 py-4 hover:border-primary/50 transition-colors"
+        className="fade-in hover-lift w-full flex items-center justify-between bg-card border border-border/60 rounded-2xl px-4 py-4 hover:border-primary/50 hover:shadow-md transition-all"
       >
         <div className="flex items-center gap-3">
           <span className="text-2xl">🧴</span>
