@@ -25,6 +25,19 @@ Deno.serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
 
+    const fmtDate = (d?: string | null) => {
+      if (!d) return null;
+      const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+      const dt = new Date(d);
+      if (!isNaN(dt.getTime())) {
+        const dd = String(dt.getDate()).padStart(2, "0");
+        const mm = String(dt.getMonth() + 1).padStart(2, "0");
+        return `${dd}/${mm}/${dt.getFullYear()}`;
+      }
+      return String(d);
+    };
+
     const ctx = {
       cliente: customerName || "Cliente",
       produto: productName,
@@ -34,8 +47,8 @@ Deno.serve(async (req) => {
       valor_pago: `R$ ${Number(amountPaid || 0).toFixed(2)}`,
       valor_pendente: `R$ ${Number(amountDue || 0).toFixed(2)}`,
       forma_pagamento: paymentMethod === "split" ? "50% / 50%" : paymentMethod === "card" ? "Cartão" : "Dinheiro",
-      vencimento: dueDate || null,
-      vencimento_1a_parcela: firstDueDate || null,
+      vencimento: fmtDate(dueDate),
+      vencimento_1a_parcela: fmtDate(firstDueDate),
       primeira_parcela_paga: firstPaid,
       em_atraso: !!isOverdue,
       vendedora: sellerName || "Essência Capixaba",
