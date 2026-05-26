@@ -5,8 +5,6 @@ import {
   Package, Droplets, TrendingUp, AlertTriangle, ArrowRight,
   DollarSign, ShoppingBag, ChevronRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
