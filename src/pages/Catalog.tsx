@@ -240,7 +240,7 @@ export default function Catalog() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-5 space-y-4">
+      <main className={`max-w-5xl mx-auto px-4 py-5 space-y-4 ${compareList.length > 0 ? "pb-24" : ""}`}>
         {/* Busca + filtros + ordenação */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
@@ -360,17 +360,6 @@ export default function Catalog() {
             </button>
           ))}
         </div>
-
-        {/* Comparador CTA */}
-        {compareList.length >= 2 && (
-          <button
-            onClick={() => setShowCompare(true)}
-            className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl shadow-sm hover:opacity-90 transition-opacity"
-          >
-            <GitCompare className="w-4 h-4" />
-            Comparar {compareList.length} perfumes selecionados
-          </button>
-        )}
 
         <p className="text-[11px] text-muted-foreground">
           {filtered.length} perfume{filtered.length !== 1 ? "s" : ""} encontrado{filtered.length !== 1 ? "s" : ""}
@@ -541,6 +530,87 @@ export default function Catalog() {
           Frascos de 100ml · Estoque atualizado em tempo real
         </p>
       </main>
+
+      {/* ── Barra flutuante de comparação ── */}
+      {compareList.length > 0 && (
+        <div
+          className={`fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-3 px-4 py-3
+            bg-white/95 backdrop-blur-md border-t border-border/60 shadow-[0_-4px_24px_rgba(0,0,0,0.08)]
+            transition-all duration-300 ease-in-out
+            ${compareList.length === 1 ? "opacity-80" : "opacity-100"}`}
+        >
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              {[0, 1, 2].map((i) => {
+                const p = compareList[i];
+                return (
+                  <div
+                    key={i}
+                    className={`relative w-11 h-11 rounded-xl overflow-hidden border-2 transition-all duration-200
+                      ${p ? "border-primary shadow-sm scale-100" : "border-dashed border-border/50 bg-muted/40 scale-95"}`}
+                  >
+                    {p ? (
+                      <>
+                        {p.image_url ? (
+                          <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                            <span className="text-xs font-bold text-primary">{p.name.charAt(0)}</span>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => toggleCompare(p)}
+                          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center shadow font-bold leading-none"
+                        >
+                          ×
+                        </button>
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-[10px] text-muted-foreground/40 font-medium">+</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-foreground leading-tight">
+                {compareList.length === 1
+                  ? "Selecione mais 1"
+                  : compareList.length === 2
+                  ? "Pronto para comparar!"
+                  : "3 perfumes selecionados"}
+              </p>
+              <p className="text-[10px] text-muted-foreground truncate">
+                {compareList.map((p) => p.name.split(" ")[0]).join(", ")}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setCompareList([])}
+              className="text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-lg hover:bg-muted transition-colors"
+            >
+              Limpar
+            </button>
+            <button
+              onClick={() => setShowCompare(true)}
+              disabled={compareList.length < 2}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl transition-all
+                ${compareList.length >= 2
+                  ? "bg-primary text-primary-foreground shadow-sm hover:opacity-90 active:scale-95"
+                  : "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
+                }`}
+            >
+              <GitCompare className="w-3.5 h-3.5" />
+              Comparar{compareList.length >= 2 ? ` (${compareList.length})` : ""}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Detalhe */}
       <Dialog
