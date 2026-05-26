@@ -526,6 +526,12 @@ export default function Reports() {
                 <p className="text-sm font-bold text-emerald-600 tabular-nums shrink-0">
                   R$ {Number(sale.sale_price).toFixed(2)}
                 </p>
+                <button
+                  onClick={() => openEditSale(sale)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <button className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
