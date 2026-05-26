@@ -62,6 +62,9 @@ export default function Reports() {
   const [editSaleMethod, setEditSaleMethod] = useState<"cash" | "card" | "split">("cash");
   const [editSaleStatus, setEditSaleStatus] = useState<"paid" | "pending">("paid");
   const [editSaleDueDate, setEditSaleDueDate] = useState("");
+  const [editSaleFirstPaid, setEditSaleFirstPaid] = useState(true);
+  const [editSaleSecondPaid, setEditSaleSecondPaid] = useState(true);
+  const [editSaleFirstDueDate, setEditSaleFirstDueDate] = useState("");
   const [editSalePrice, setEditSalePrice] = useState("");
 
   const openEditSale = (sale: any) => {
@@ -70,6 +73,9 @@ export default function Reports() {
     setEditSaleMethod((sale.payment_method as any) || "cash");
     setEditSaleStatus((sale.payment_status as any) || "paid");
     setEditSaleDueDate(sale.due_date || "");
+    setEditSaleFirstPaid(sale.first_paid ?? true);
+    setEditSaleSecondPaid((sale.payment_status || "paid") === "paid");
+    setEditSaleFirstDueDate(sale.first_due_date || "");
     setEditSalePrice(String(sale.sale_price));
   };
 
@@ -79,14 +85,28 @@ export default function Reports() {
       const priceNum = parseFloat(editSalePrice);
       if (isNaN(priceNum) || priceNum < 0) throw new Error("Valor inválido");
       const isSplit = editSaleMethod === "split";
-      const status = isSplit ? editSaleStatus : "paid";
-      const amountPaid = status === "paid"
-        ? priceNum
-        : isSplit ? Math.round((priceNum / 2) * 100) / 100 : 0;
-      const amountDue = Math.round((priceNum - amountPaid) * 100) / 100;
-      if (isSplit && status === "pending" && !editSaleDueDate) {
-        throw new Error("Informe a data do 2º pagamento");
+      let status: "paid" | "pending";
+      let amountPaid: number;
+      let firstPaid = true;
+      let firstDue: string | null = null;
+      let secondDue: string | null = null;
+      if (isSplit) {
+        const half = Math.round((priceNum / 2) * 100) / 100;
+        firstPaid = editSaleFirstPaid;
+        const secondPaid = editSaleSecondPaid;
+        amountPaid = (firstPaid ? half : 0) + (secondPaid ? priceNum - half : 0);
+        status = firstPaid && secondPaid ? "paid" : "pending";
+        if (!firstPaid && !editSaleFirstDueDate) throw new Error("Informe a data da 1ª parcela");
+        if (!secondPaid && !editSaleDueDate) throw new Error("Informe a data da 2ª parcela");
+        firstDue = firstPaid ? null : editSaleFirstDueDate;
+        secondDue = secondPaid ? null : editSaleDueDate;
+      } else {
+        status = editSaleStatus;
+        amountPaid = status === "paid" ? priceNum : 0;
+        if (status === "pending" && !editSaleDueDate) throw new Error("Informe a data de pagamento");
+        secondDue = status === "pending" ? editSaleDueDate : null;
       }
+      const amountDue = Math.round((priceNum - amountPaid) * 100) / 100;
       const { error } = await supabase
         .from("sales")
         .update({
@@ -96,7 +116,9 @@ export default function Reports() {
           amount_paid: amountPaid,
           amount_due: amountDue,
           sale_price: priceNum,
-          due_date: isSplit && status === "pending" ? editSaleDueDate : null,
+          due_date: secondDue,
+          first_paid: firstPaid,
+          first_due_date: firstDue,
         })
         .eq("id", editSale.id);
       if (error) throw error;
