@@ -1,9 +1,11 @@
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Trash2, Pencil, ArrowUp, Settings2, Package } from "lucide-react";
+import {
+  BarChart3, Trash2, Pencil, ArrowUp, Settings2,
+  TrendingUp, DollarSign, Droplets, ShoppingBag, Trophy, Package,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +30,23 @@ import { ptBR } from "date-fns/locale";
 
 type Period = "week" | "month" | "all";
 
+const PERIOD_LABELS: { key: Period; label: string }[] = [
+  { key: "week", label: "7 dias" },
+  { key: "month", label: "Este mês" },
+  { key: "all", label: "Tudo" },
+];
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-card border border-border/60 rounded-xl shadow-lg px-3 py-2 text-xs">
+      <p className="font-semibold text-foreground mb-1">{label}</p>
+      <p className="text-emerald-600">Receita: R$ {Number(payload[0]?.value ?? 0).toFixed(2)}</p>
+      <p className="text-violet-600">Lucro: R$ {Number(payload[1]?.value ?? 0).toFixed(2)}</p>
+    </div>
+  );
+};
+
 export default function Reports() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -47,7 +66,7 @@ export default function Reports() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sales")
-        .select("*, products(name, brand)")
+        .select("*, products(name, brand, image_url)")
         .gte("created_at", startDate.toISOString())
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -72,15 +91,16 @@ export default function Reports() {
   }, []) ?? [];
 
   // Top products
-  const topProducts = sales?.reduce((acc: Record<string, { name: string; ml: number; revenue: number }>, sale: any) => {
+  const topProducts = sales?.reduce((acc: Record<string, { name: string; image_url?: string | null; ml: number; revenue: number; qty: number }>, sale: any) => {
     const pid = sale.product_id;
     if (!acc[pid]) {
-      acc[pid] = { name: sale.products?.name || "?", ml: 0, revenue: 0 };
+      acc[pid] = { name: sale.products?.name || "?", image_url: sale.products?.image_url, ml: 0, revenue: 0, qty: 0 };
     }
     acc[pid].ml += Number(sale.ml_sold);
     acc[pid].revenue += Number(sale.sale_price);
+    acc[pid].qty += 1;
     return acc;
-  }, {} as Record<string, { name: string; ml: number; revenue: number }>);
+  }, {} as Record<string, { name: string; image_url?: string | null; ml: number; revenue: number; qty: number }>);
 
   const topList = topProducts
     ? Object.values(topProducts).sort((a, b) => b.revenue - a.revenue).slice(0, 5)
@@ -89,6 +109,7 @@ export default function Reports() {
   const totalRevenue = sales?.reduce((s, sale) => s + Number(sale.sale_price), 0) ?? 0;
   const totalProfit = sales?.reduce((s, sale) => s + Number(sale.sale_price) - Number(sale.cost_price), 0) ?? 0;
   const totalMl = sales?.reduce((s, sale) => s + Number(sale.ml_sold), 0) ?? 0;
+  const totalSales = sales?.length ?? 0;
 
   const recentSales = sales ? [...sales].reverse().slice(0, 20) : [];
 
