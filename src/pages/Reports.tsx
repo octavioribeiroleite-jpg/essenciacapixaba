@@ -500,6 +500,29 @@ export default function Reports() {
           </span>
         </div>
 
+        {/* Status filter */}
+        <div className="inline-flex bg-muted/60 rounded-xl p-1 gap-1">
+          {([
+            { key: "all", label: `Todas (${sales?.length ?? 0})` },
+            { key: "paid", label: `Pagas (${paidCount})` },
+            { key: "pending", label: `Pendentes (${pendingCount})` },
+          ] as { key: SaleStatusFilter; label: string }[]).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setSaleStatusFilter(key)}
+              className={`text-[11px] font-medium px-2.5 py-1.5 rounded-lg transition-all ${
+                saleStatusFilter === key
+                  ? key === "pending"
+                    ? "bg-amber-100 text-amber-800 shadow-sm"
+                    : "bg-card shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         {recentSales.length === 0 ? (
           <div className="text-center py-6">
             <p className="text-3xl mb-1">📦</p>
