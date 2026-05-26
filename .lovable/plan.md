@@ -1,38 +1,41 @@
-## Objetivo
+## Redesenhar `src/pages/Dashboard.tsx`
 
-Trocar o modelo das edge functions de IA para **`openai/gpt-5`** (máxima precisão) e reforçar os prompts para **nunca inventar dados** — se a IA não tiver certeza sobre um perfume, deve retornar `null` em vez de "chutar".
+Reformular visualmente o Dashboard mantendo todas as funcionalidades atuais (queries, mutation de atualização IA, navegação, alertas).
 
----
+### Mudanças
 
-## Alterações
+1. **Header com gradiente dourado**
+   - Card com `bg-gradient-to-br from-primary via-primary/90 to-amber-400` (tokens do tema bege/dourado), texto branco, cantos arredondados.
+   - Mostra data, saudação (`Bom dia/tarde/noite` + emoji 🌅/☀️/🌙) e subtítulo.
+   - Botão "✨ Atualizar tudo com IA" embutido no header (estilo `bg-white/20 backdrop-blur border-white/30`), substituindo o botão solto atual.
 
-### 1. `supabase/functions/fetch-perfume-details/index.ts`
-- Trocar `model: "google/gemini-3-flash-preview"` → `model: "openai/gpt-5"`.
-- Reforçar `systemPrompt` com regra anti-alucinação explícita:
-  - "Se você não tem **certeza absoluta** da existência do perfume ou de qualquer campo, retorne `null` / array vazio. **Nunca invente** marca, notas olfativas ou concentração."
-  - "Use apenas informação verificável de fontes reais (Fragrantica, sites oficiais das marcas árabes)."
-- Adicionar campo opcional `confidence` (alta/média/baixa) no tool schema para sabermos quando a IA teve dúvida.
-- Manter `tool_choice` forçado para garantir saída estruturada.
+2. **Cards de estatísticas (4 cards)**
+   - Grid `grid-cols-2 lg:grid-cols-4`.
+   - Cada card: ícone em chip com gradiente colorido próprio (âmbar/sky/emerald/violet), label em uppercase, valor grande, sublabel.
+   - Mantém os mesmos 4 dados: Produtos, Estoque (frascos), Receita do mês, Lucro do mês.
 
-### 2. `supabase/functions/generate-description/index.ts`
-- Trocar `model: "google/gemini-3-flash-preview"` → `model: "openai/gpt-5"`.
-- Ajustar prompt: a descrição só pode usar notas/marca/concentração **realmente presentes** no produto. Se faltar dado, escrever de forma genérica sem inventar nota.
+3. **Estoque Baixo reformulado**
+   - Card branco com header destacando "Estoque Baixo" + badges contadores (esgotados em vermelho, baixos em âmbar).
+   - Lista com itens contendo: **miniatura da foto** (com fallback inicial colorido), nome, marca, **mini barra de progresso** (`current_ml / (ML_PER_FRASCO*2)`), badge de quantidade e chevron.
+   - Separar esgotados (`current_ml === 0`) dos baixos visualmente (cor vermelha vs âmbar).
 
-### 3. Tratamento de erro (ambas funções)
-- Manter os handlers já existentes para 429 (rate limit) e 402 (créditos esgotados).
-- GPT-5 é mais caro — adicionar log claro do modelo usado para você acompanhar consumo.
+4. **Vendas Recentes com foto**
+   - Adicionar `image_url` ao select de `sales` (`products(name, brand, image_url)`).
+   - Cada linha mostra miniatura da foto do produto, nome, data + frascos vendidos, e valor em verde com prefixo `+`.
+   - Empty state com emoji 📦.
 
----
+5. **Atalho "Ver Catálogo"** — mantém como está, apenas pequenas melhorias de hover.
 
-## Detalhes técnicos
+6. **Modal de progresso IA** — mantém igual.
 
-- `openai/gpt-5` está disponível no Lovable AI Gateway, sem precisar de API key da OpenAI (usa o `LOVABLE_API_KEY` já configurado).
-- É mais lento (~3-8s por chamada) e mais caro que Gemini Flash. Em batch de "Atualizar tudo com IA" no Dashboard, manter o delay de 700ms entre chamadas para evitar 429.
-- Sem mudanças no banco, no frontend ou em outras funções (`fetch-perfume-image`, `parse-invoice-text` continuam como estão).
+### Detalhes técnicos
 
----
+- Adicionar ícones `Sparkles`, `ShoppingBag`, `ChevronRight` ao import do lucide-react.
+- Atualizar query de `sales-month` para incluir `image_url` no join.
+- Calcular `emptyStock = lowStock.filter(p => Number(p.current_ml) === 0)` para o badge.
+- Manter uso de `ML_PER_FRASCO`, `formatFrascos`, semantic tokens (`text-foreground`, `text-muted-foreground`, `bg-card`, `border-border`). Cores acentuadas (âmbar/emerald/sky/violet) ficam apenas nos chips/badges/ícones — não substituem tokens semânticos do tema.
+- Não alterar nenhum outro arquivo.
 
-## Fora do escopo
+### Pergunta pendente
 
-- Não vou adicionar fallback automático Gemini → OpenAI (você não pediu; posso fazer depois se quiser).
-- Não vou mexer no `fetch-perfume-image` (busca de fotos via DuckDuckGo, não usa LLM).
+A pergunta anterior sobre bloquear o acesso do catálogo público ao app principal continua aberta — depois desta mudança, me responda qual fluxo prefere para eu implementar.
