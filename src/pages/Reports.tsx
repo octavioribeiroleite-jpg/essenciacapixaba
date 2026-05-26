@@ -62,6 +62,9 @@ export default function Reports() {
   const [editSaleMethod, setEditSaleMethod] = useState<"cash" | "card" | "split">("cash");
   const [editSaleStatus, setEditSaleStatus] = useState<"paid" | "pending">("paid");
   const [editSaleDueDate, setEditSaleDueDate] = useState("");
+  const [editSaleFirstPaid, setEditSaleFirstPaid] = useState(true);
+  const [editSaleSecondPaid, setEditSaleSecondPaid] = useState(true);
+  const [editSaleFirstDueDate, setEditSaleFirstDueDate] = useState("");
   const [editSalePrice, setEditSalePrice] = useState("");
 
   const openEditSale = (sale: any) => {
@@ -70,6 +73,9 @@ export default function Reports() {
     setEditSaleMethod((sale.payment_method as any) || "cash");
     setEditSaleStatus((sale.payment_status as any) || "paid");
     setEditSaleDueDate(sale.due_date || "");
+    setEditSaleFirstPaid(sale.first_paid ?? true);
+    setEditSaleSecondPaid((sale.payment_status || "paid") === "paid");
+    setEditSaleFirstDueDate(sale.first_due_date || "");
     setEditSalePrice(String(sale.sale_price));
   };
 
@@ -79,14 +85,28 @@ export default function Reports() {
       const priceNum = parseFloat(editSalePrice);
       if (isNaN(priceNum) || priceNum < 0) throw new Error("Valor inválido");
       const isSplit = editSaleMethod === "split";
-      const status = isSplit ? editSaleStatus : "paid";
-      const amountPaid = status === "paid"
-        ? priceNum
-        : isSplit ? Math.round((priceNum / 2) * 100) / 100 : 0;
-      const amountDue = Math.round((priceNum - amountPaid) * 100) / 100;
-      if (isSplit && status === "pending" && !editSaleDueDate) {
-        throw new Error("Informe a data do 2º pagamento");
+      let status: "paid" | "pending";
+      let amountPaid: number;
+      let firstPaid = true;
+      let firstDue: string | null = null;
+      let secondDue: string | null = null;
+      if (isSplit) {
+        const half = Math.round((priceNum / 2) * 100) / 100;
+        firstPaid = editSaleFirstPaid;
+        const secondPaid = editSaleSecondPaid;
+        amountPaid = (firstPaid ? half : 0) + (secondPaid ? priceNum - half : 0);
+        status = firstPaid && secondPaid ? "paid" : "pending";
+        if (!firstPaid && !editSaleFirstDueDate) throw new Error("Informe a data da 1ª parcela");
+        if (!secondPaid && !editSaleDueDate) throw new Error("Informe a data da 2ª parcela");
+        firstDue = firstPaid ? null : editSaleFirstDueDate;
+        secondDue = secondPaid ? null : editSaleDueDate;
+      } else {
+        status = editSaleStatus;
+        amountPaid = status === "paid" ? priceNum : 0;
+        if (status === "pending" && !editSaleDueDate) throw new Error("Informe a data de pagamento");
+        secondDue = status === "pending" ? editSaleDueDate : null;
       }
+      const amountDue = Math.round((priceNum - amountPaid) * 100) / 100;
       const { error } = await supabase
         .from("sales")
         .update({
@@ -96,7 +116,9 @@ export default function Reports() {
           amount_paid: amountPaid,
           amount_due: amountDue,
           sale_price: priceNum,
-          due_date: isSplit && status === "pending" ? editSaleDueDate : null,
+          due_date: secondDue,
+          first_paid: firstPaid,
+          first_due_date: firstDue,
         })
         .eq("id", editSale.id);
       if (error) throw error;
@@ -853,39 +875,45 @@ export default function Reports() {
               </div>
 
               {editSaleMethod === "split" && (
-                <div className="rounded-lg bg-muted/40 border border-border p-3 space-y-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Status</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={editSaleStatus === "pending" ? "default" : "secondary"}
-                        className="text-xs"
-                        onClick={() => setEditSaleStatus("pending")}
-                      >
-                        Pendente
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={editSaleStatus === "paid" ? "default" : "secondary"}
-                        className="text-xs"
-                        onClick={() => setEditSaleStatus("paid")}
-                      >
-                        Quitado
-                      </Button>
+                <div className="rounded-lg bg-muted/40 border border-border p-3 space-y-3">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-medium text-foreground">1ª parcela (50%)</label>
+                      <div className="inline-flex bg-card rounded-lg p-0.5 gap-0.5 border border-border">
+                        <button type="button" onClick={() => setEditSaleFirstPaid(true)} className={`text-[10px] px-2 py-1 rounded-md font-medium ${editSaleFirstPaid ? "bg-emerald-500 text-white" : "text-muted-foreground"}`}>Paga</button>
+                        <button type="button" onClick={() => setEditSaleFirstPaid(false)} className={`text-[10px] px-2 py-1 rounded-md font-medium ${!editSaleFirstPaid ? "bg-amber-500 text-white" : "text-muted-foreground"}`}>Pendente</button>
+                      </div>
                     </div>
+                    {!editSaleFirstPaid && (
+                      <Input type="date" value={editSaleFirstDueDate} onChange={(e) => setEditSaleFirstDueDate(e.target.value)} className="rounded-xl h-9" />
+                    )}
+                  </div>
+                  <div className="space-y-2 pt-2 border-t border-border/60">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-medium text-foreground">2ª parcela (50%)</label>
+                      <div className="inline-flex bg-card rounded-lg p-0.5 gap-0.5 border border-border">
+                        <button type="button" onClick={() => setEditSaleSecondPaid(true)} className={`text-[10px] px-2 py-1 rounded-md font-medium ${editSaleSecondPaid ? "bg-emerald-500 text-white" : "text-muted-foreground"}`}>Paga</button>
+                        <button type="button" onClick={() => setEditSaleSecondPaid(false)} className={`text-[10px] px-2 py-1 rounded-md font-medium ${!editSaleSecondPaid ? "bg-amber-500 text-white" : "text-muted-foreground"}`}>Pendente</button>
+                      </div>
+                    </div>
+                    {!editSaleSecondPaid && (
+                      <Input type="date" value={editSaleDueDate} onChange={(e) => setEditSaleDueDate(e.target.value)} className="rounded-xl h-9" />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {editSaleMethod === "split" ? null : (
+                <div className="rounded-lg bg-muted/40 border border-border p-3 space-y-2">
+                  <label className="text-xs text-muted-foreground block">Status do pagamento</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" size="sm" variant={editSaleStatus === "paid" ? "default" : "secondary"} className="text-xs" onClick={() => setEditSaleStatus("paid")}>Pago</Button>
+                    <Button type="button" size="sm" variant={editSaleStatus === "pending" ? "default" : "secondary"} className="text-xs" onClick={() => setEditSaleStatus("pending")}>Pendente</Button>
                   </div>
                   {editSaleStatus === "pending" && (
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Data do 2º pagamento</label>
-                      <Input
-                        type="date"
-                        value={editSaleDueDate}
-                        onChange={(e) => setEditSaleDueDate(e.target.value)}
-                        className="rounded-xl"
-                      />
+                      <label className="text-xs text-muted-foreground mb-1 block">Data prevista</label>
+                      <Input type="date" value={editSaleDueDate} onChange={(e) => setEditSaleDueDate(e.target.value)} className="rounded-xl" />
                     </div>
                   )}
                 </div>
