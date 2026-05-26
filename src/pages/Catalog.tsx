@@ -240,7 +240,7 @@ export default function Catalog() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-5 space-y-4">
+      <main className={`max-w-5xl mx-auto px-4 py-5 space-y-4 ${compareList.length > 0 ? "pb-24" : ""}`}>
         {/* Busca + filtros + ordenação */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
