@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   BarChart3, Trash2, Pencil, ArrowUp, Settings2,
   TrendingUp, DollarSign, Droplets, ShoppingBag, Trophy, Package,
-  Clock, CheckCircle2, User, Banknote, CreditCard, SplitSquareHorizontal,
+  Clock, CheckCircle2, User, Banknote, CreditCard, SplitSquareHorizontal, Sparkles,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format, subDays, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { ChargeMessageDialog, type ChargePayload } from "@/components/ChargeMessageDialog";
 
 type Period = "week" | "month" | "all";
 type SaleStatusFilter = "all" | "paid" | "pending";
@@ -63,6 +64,28 @@ export default function Reports() {
   const [editSaleStatus, setEditSaleStatus] = useState<"paid" | "pending">("paid");
   const [editSaleDueDate, setEditSaleDueDate] = useState("");
   const [editSaleFirstPaid, setEditSaleFirstPaid] = useState(true);
+  const [chargePayload, setChargePayload] = useState<ChargePayload | null>(null);
+  const [chargeOpen, setChargeOpen] = useState(false);
+
+  const openCharge = (sale: any) => {
+    const due = sale.due_date ? new Date(sale.due_date + "T00:00:00") : null;
+    const overdue = due ? due < new Date(new Date().toDateString()) : false;
+    setChargePayload({
+      customerName: sale.customer_name,
+      productName: sale.products?.name || "Perfume",
+      brand: sale.products?.brand || null,
+      quantity: Math.max(1, Math.round(Number(sale.ml_sold) / ML_PER_FRASCO)),
+      total: Number(sale.sale_price),
+      amountPaid: Number(sale.amount_paid || 0),
+      amountDue: Number(sale.amount_due || 0),
+      paymentMethod: sale.payment_method,
+      dueDate: sale.due_date,
+      firstDueDate: sale.first_due_date,
+      firstPaid: sale.first_paid,
+      isOverdue: overdue,
+    });
+    setChargeOpen(true);
+  };
   const [editSaleSecondPaid, setEditSaleSecondPaid] = useState(true);
   const [editSaleFirstDueDate, setEditSaleFirstDueDate] = useState("");
   const [editSalePrice, setEditSalePrice] = useState("");
@@ -580,6 +603,15 @@ export default function Reports() {
                 <p className="text-sm font-bold text-emerald-600 tabular-nums shrink-0">
                   R$ {Number(sale.sale_price).toFixed(2)}
                 </p>
+                {sale.payment_status === "pending" && (
+                  <button
+                    onClick={() => openCharge(sale)}
+                    title="Gerar cobrança"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-amber-600 hover:bg-amber-50 transition-colors"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button
                   onClick={() => openEditSale(sale)}
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
@@ -692,6 +724,14 @@ export default function Reports() {
                     disabled={markPaid.isPending}
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" /> Pagou
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 text-xs gap-1 shrink-0"
+                    onClick={() => openCharge(sale)}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" /> Cobrança
                   </Button>
                   <button
                     onClick={() => openEditSale(sale)}
@@ -960,6 +1000,8 @@ export default function Reports() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ChargeMessageDialog open={chargeOpen} onOpenChange={setChargeOpen} payload={chargePayload} />
     </div>
   );
 }
