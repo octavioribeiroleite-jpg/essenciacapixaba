@@ -440,6 +440,8 @@ export default function Sales() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ChargeMessageDialog open={chargeOpen} onOpenChange={setChargeOpen} payload={chargePayload} />
     </div>
   );
 }
