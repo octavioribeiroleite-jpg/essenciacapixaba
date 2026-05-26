@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   BarChart3, Trash2, Pencil, ArrowUp, Settings2,
   TrendingUp, DollarSign, Droplets, ShoppingBag, Trophy, Package,
-  Clock, CheckCircle2, User, Banknote, CreditCard, SplitSquareHorizontal,
+  Clock, CheckCircle2, User, Banknote, CreditCard, SplitSquareHorizontal, Sparkles,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format, subDays, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { ChargeMessageDialog, type ChargePayload } from "@/components/ChargeMessageDialog";
 
 type Period = "week" | "month" | "all";
 type SaleStatusFilter = "all" | "paid" | "pending";
