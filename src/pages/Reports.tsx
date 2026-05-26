@@ -30,6 +30,7 @@ import { format, subDays, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 type Period = "week" | "month" | "all";
+type SaleStatusFilter = "all" | "paid" | "pending";
 
 const PERIOD_LABELS: { key: Period; label: string }[] = [
   { key: "week", label: "7 dias" },
@@ -52,6 +53,7 @@ export default function Reports() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState<Period>("month");
+  const [saleStatusFilter, setSaleStatusFilter] = useState<SaleStatusFilter>("all");
   const [editMov, setEditMov] = useState<any | null>(null);
   const [editMovMl, setEditMovMl] = useState("");
   const [editMovNote, setEditMovNote] = useState("");
@@ -165,7 +167,14 @@ export default function Reports() {
   const totalMl = sales?.reduce((s, sale) => s + Number(sale.ml_sold), 0) ?? 0;
   const totalSales = sales?.length ?? 0;
 
-  const recentSales = sales ? [...sales].reverse().slice(0, 20) : [];
+  const filteredSales = sales
+    ? sales.filter((s: any) =>
+        saleStatusFilter === "all" ? true : (s.payment_status || "paid") === saleStatusFilter,
+      )
+    : [];
+  const recentSales = [...filteredSales].reverse().slice(0, 20);
+  const paidCount = sales?.filter((s: any) => (s.payment_status || "paid") === "paid").length ?? 0;
+  const pendingCount = sales?.filter((s: any) => s.payment_status === "pending").length ?? 0;
 
   const { data: pendingSales } = useQuery({
     queryKey: ["pending-sales"],
