@@ -51,6 +51,27 @@ Deno.serve(async (req) => {
       "Se estiver em atraso, mantenha o tom gentil mas mencione a data discretamente. " +
       "NÃO invente informações. Use apenas os dados fornecidos. Retorne apenas o texto da mensagem, sem aspas, sem markdown.";
 
+    const buildFallback = () => {
+      const linhas: string[] = [];
+      linhas.push(`Olá ${ctx.cliente}! ✨`);
+      linhas.push("");
+      linhas.push(
+        `Passando para lembrar sobre o seu perfume ${ctx.produto}${ctx.marca ? ` (${ctx.marca})` : ""}` +
+          `${ctx.quantidade_frascos ? ` — ${ctx.quantidade_frascos} frasco(s)` : ""}.`,
+      );
+      linhas.push("");
+      linhas.push(`💰 Valor total: ${ctx.valor_total}`);
+      if (Number(amountPaid) > 0) linhas.push(`✅ Já pago: ${ctx.valor_pago}`);
+      linhas.push(`📌 Pendente: ${ctx.valor_pendente}`);
+      if (ctx.vencimento) linhas.push(`📅 Vencimento: ${ctx.vencimento}`);
+      else if (ctx.vencimento_1a_parcela) linhas.push(`📅 Vencimento da 1ª parcela: ${ctx.vencimento_1a_parcela}`);
+      linhas.push("");
+      linhas.push("💳 Pode pagar via PIX ou dinheiro.");
+      linhas.push("");
+      linhas.push(`Qualquer dúvida estou por aqui 💛 — ${ctx.vendedora}`);
+      return linhas.join("\n");
+    };
+
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -66,30 +87,24 @@ Deno.serve(async (req) => {
       }),
     });
 
-    if (resp.status === 429) {
-      return new Response(JSON.stringify({ error: "Limite de requisições. Tente novamente em instantes." }), {
-        status: 429,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (resp.status === 402) {
-      return new Response(JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos no workspace." }), {
-        status: 402,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
     if (!resp.ok) {
-      const t = await resp.text();
+      const t = await resp.text().catch(() => "");
       console.error("AI error:", resp.status, t);
-      return new Response(JSON.stringify({ error: "Erro ao gerar mensagem" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const notice =
+        resp.status === 402
+          ? "Créditos de IA esgotados — usando modelo padrão."
+          : resp.status === 429
+            ? "Limite de requisições — usando modelo padrão."
+            : "IA indisponível — usando modelo padrão.";
+      return new Response(
+        JSON.stringify({ message: buildFallback(), fallback: true, notice }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     const data = await resp.json();
     const message: string = data?.choices?.[0]?.message?.content?.trim() ?? "";
-    return new Response(JSON.stringify({ message }), {
+    return new Response(JSON.stringify({ message: message || buildFallback(), fallback: !message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

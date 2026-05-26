@@ -38,9 +38,15 @@ export function ChargeMessageDialog({ open, onOpenChange, payload }: Props) {
       const { data, error } = await supabase.functions.invoke("generate-charge-message", {
         body: payload,
       });
+      const msg = (data as any)?.message;
+      if (msg) {
+        setMessage(msg);
+        if ((data as any)?.notice) toast.message((data as any).notice);
+        return;
+      }
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      setMessage((data as any)?.message || "");
+      setMessage("");
     } catch (e: any) {
       toast.error(e.message || "Erro ao gerar mensagem");
     } finally {
