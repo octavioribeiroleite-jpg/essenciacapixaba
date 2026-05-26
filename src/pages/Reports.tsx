@@ -618,7 +618,35 @@ export default function Reports() {
       </div>
 
       {/* Stock entries */}
-      {pendingSales && pendingSales.length > 0 && (
+      {pendingSales && pendingSales.length > 0 && (() => {
+        const totalPending = pendingSales.reduce((s: number, sale: any) => s + Number(sale.amount_due || 0), 0);
+        const overdueCount = pendingSales.filter((sale: any) => {
+          const due = sale.due_date ? new Date(sale.due_date + "T00:00:00") : null;
+          return due && due < new Date(new Date().toDateString());
+        }).length;
+        return (
+        <div className="space-y-3">
+          {/* Total pendente card */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 p-4 text-white shadow-lg">
+            <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10" />
+            <div className="absolute -right-2 -bottom-8 w-20 h-20 rounded-full bg-white/5" />
+            <div className="relative flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/90">
+                  <Clock className="w-3 h-3" /> Total a receber
+                </div>
+                <p className="text-2xl font-bold tabular-nums leading-tight mt-1">R$ {totalPending.toFixed(2)}</p>
+                <p className="text-[11px] text-white/80 mt-0.5">
+                  {pendingSales.length} pagamento{pendingSales.length !== 1 ? "s" : ""} pendente{pendingSales.length !== 1 ? "s" : ""}
+                  {overdueCount > 0 && ` · ${overdueCount} em atraso`}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+                <DollarSign className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+
         <div className="bg-card rounded-2xl border border-amber-300/60 p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-amber-600" />
