@@ -55,6 +55,59 @@ export default function Reports() {
   const [editMov, setEditMov] = useState<any | null>(null);
   const [editMovMl, setEditMovMl] = useState("");
   const [editMovNote, setEditMovNote] = useState("");
+  const [editSale, setEditSale] = useState<any | null>(null);
+  const [editSaleCustomer, setEditSaleCustomer] = useState("");
+  const [editSaleMethod, setEditSaleMethod] = useState<"cash" | "card" | "split">("cash");
+  const [editSaleStatus, setEditSaleStatus] = useState<"paid" | "pending">("paid");
+  const [editSaleDueDate, setEditSaleDueDate] = useState("");
+  const [editSalePrice, setEditSalePrice] = useState("");
+
+  const openEditSale = (sale: any) => {
+    setEditSale(sale);
+    setEditSaleCustomer(sale.customer_name || "");
+    setEditSaleMethod((sale.payment_method as any) || "cash");
+    setEditSaleStatus((sale.payment_status as any) || "paid");
+    setEditSaleDueDate(sale.due_date || "");
+    setEditSalePrice(String(sale.sale_price));
+  };
+
+  const updateSale = useMutation({
+    mutationFn: async () => {
+      if (!editSale) throw new Error("Erro");
+      const priceNum = parseFloat(editSalePrice);
+      if (isNaN(priceNum) || priceNum < 0) throw new Error("Valor inválido");
+      const isSplit = editSaleMethod === "split";
+      const status = isSplit ? editSaleStatus : "paid";
+      const amountPaid = status === "paid"
+        ? priceNum
+        : isSplit ? Math.round((priceNum / 2) * 100) / 100 : 0;
+      const amountDue = Math.round((priceNum - amountPaid) * 100) / 100;
+      if (isSplit && status === "pending" && !editSaleDueDate) {
+        throw new Error("Informe a data do 2º pagamento");
+      }
+      const { error } = await supabase
+        .from("sales")
+        .update({
+          customer_name: editSaleCustomer.trim() || null,
+          payment_method: editSaleMethod,
+          payment_status: status,
+          amount_paid: amountPaid,
+          amount_due: amountDue,
+          sale_price: priceNum,
+          due_date: isSplit && status === "pending" ? editSaleDueDate : null,
+        })
+        .eq("id", editSale.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["report-sales"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-month"] });
+      toast.success("Venda atualizada!");
+      setEditSale(null);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   const startDate = period === "week"
     ? subDays(new Date(), 7)
@@ -473,6 +526,12 @@ export default function Reports() {
                 <p className="text-sm font-bold text-emerald-600 tabular-nums shrink-0">
                   R$ {Number(sale.sale_price).toFixed(2)}
                 </p>
+                <button
+                  onClick={() => openEditSale(sale)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <button className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
@@ -552,6 +611,12 @@ export default function Reports() {
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" /> Pagou
                   </Button>
+                  <button
+                    onClick={() => openEditSale(sale)}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               );
             })}
@@ -680,6 +745,126 @@ export default function Reports() {
                 disabled={updateMovement.isPending}
               >
                 {updateMovement.isPending ? "Salvando..." : "Salvar alterações"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit sale dialog */}
+      <Dialog open={!!editSale} onOpenChange={(o) => !o && setEditSale(null)}>
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar venda</DialogTitle>
+          </DialogHeader>
+          {editSale && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                {editSale.products?.name} · {Number(editSale.ml_sold).toFixed(0)}ml
+              </p>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Cliente</label>
+                <Input
+                  value={editSaleCustomer}
+                  onChange={(e) => setEditSaleCustomer(e.target.value)}
+                  placeholder="Nome do cliente"
+                  maxLength={100}
+                  className="rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Valor total (R$)</label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  value={editSalePrice}
+                  onChange={(e) => setEditSalePrice(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Forma de pagamento</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant={editSaleMethod === "cash" ? "default" : "secondary"}
+                    className="text-xs flex-col h-auto py-2"
+                    onClick={() => setEditSaleMethod("cash")}
+                  >
+                    <Banknote className="h-4 w-4 mb-1" />
+                    Dinheiro
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={editSaleMethod === "card" ? "default" : "secondary"}
+                    className="text-xs flex-col h-auto py-2"
+                    onClick={() => setEditSaleMethod("card")}
+                  >
+                    <CreditCard className="h-4 w-4 mb-1" />
+                    Cartão
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={editSaleMethod === "split" ? "default" : "secondary"}
+                    className="text-xs flex-col h-auto py-2"
+                    onClick={() => setEditSaleMethod("split")}
+                  >
+                    <SplitSquareHorizontal className="h-4 w-4 mb-1" />
+                    50/50
+                  </Button>
+                </div>
+              </div>
+
+              {editSaleMethod === "split" && (
+                <div className="rounded-lg bg-muted/40 border border-border p-3 space-y-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={editSaleStatus === "pending" ? "default" : "secondary"}
+                        className="text-xs"
+                        onClick={() => setEditSaleStatus("pending")}
+                      >
+                        Pendente
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={editSaleStatus === "paid" ? "default" : "secondary"}
+                        className="text-xs"
+                        onClick={() => setEditSaleStatus("paid")}
+                      >
+                        Quitado
+                      </Button>
+                    </div>
+                  </div>
+                  {editSaleStatus === "pending" && (
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Data do 2º pagamento</label>
+                      <Input
+                        type="date"
+                        value={editSaleDueDate}
+                        onChange={(e) => setEditSaleDueDate(e.target.value)}
+                        className="rounded-xl"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <Button
+                onClick={() => updateSale.mutate()}
+                className="w-full rounded-xl"
+                disabled={updateSale.isPending}
+              >
+                {updateSale.isPending ? "Salvando..." : "Salvar alterações"}
               </Button>
             </div>
           )}
