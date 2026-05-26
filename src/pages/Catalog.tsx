@@ -391,10 +391,37 @@ export default function Catalog() {
               const topNote = p.fragrance_notes?.top?.[0];
               const inCompare = isInCompare(p);
 
+              const longevityLabel = (() => {
+                const v = p.longevity;
+                if (!v) return null;
+                const s = v.toLowerCase();
+                if (s.startsWith("muito alt")) return "Muito Alta";
+                if (s.startsWith("alt")) return "Alta";
+                if (s.startsWith("méd") || s.startsWith("med")) return "Média";
+                if (s.startsWith("baix")) return "Baixa";
+                return v;
+              })();
+              const sillageLabel = (() => {
+                const v = p.sillage;
+                if (!v) return null;
+                const s = v.toLowerCase();
+                if (s.startsWith("suave") || s.startsWith("intim")) return "Suave";
+                if (s.startsWith("moder") || s.startsWith("méd") || s.startsWith("med")) return "Moderada";
+                if (s.startsWith("forte")) return "Forte";
+                if (s.startsWith("enorme") || s.startsWith("muito")) return "Enorme";
+                return v;
+              })();
+              const mainOccasions = (p.occasions ?? [])
+                .filter((o) => ["Casual", "Encontro", "Festa", "Formal", "Trabalho", "Especial"].includes(o))
+                .slice(0, 2);
+              const clima = (p.occasions ?? []).find((o) => ["Quente", "Frio", "Neutro"].includes(o));
+
               return (
                 <div
                   key={p.id}
-                  className="flex flex-col bg-card rounded-2xl border border-border/60 overflow-hidden hover:shadow-md transition-all"
+                  className={`flex flex-col bg-card rounded-2xl border overflow-hidden transition-all ${
+                    inCompare ? "border-primary ring-2 ring-primary/30" : "border-border/60 hover:shadow-md hover:-translate-y-0.5"
+                  }`}
                 >
                   <button onClick={() => setSelected(p)} className="text-left flex flex-col flex-1">
                     <div className="w-full aspect-square bg-secondary relative overflow-hidden">
@@ -414,13 +441,41 @@ export default function Catalog() {
                         {badge.label}
                       </span>
                     </div>
-                    <div className="p-2.5 flex flex-col gap-1 flex-1">
+                    <div className="p-2.5 flex flex-col gap-1.5 flex-1">
                       <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{p.name}</p>
                       <p className="text-[10px] text-muted-foreground truncate">
                         {p.brand || "Sem marca"}{p.concentration ? ` · ${p.concentration}` : ""}
                       </p>
                       {topNote && (
                         <p className="text-[10px] text-primary/80 truncate">🌿 {topNote}</p>
+                      )}
+                      {(longevityLabel || sillageLabel) && (
+                        <div className="flex flex-wrap gap-1">
+                          {longevityLabel && (
+                            <span className="inline-flex items-center gap-1 bg-muted/70 rounded-md px-1.5 py-0.5 text-[10px] font-medium">
+                              ⏱ {longevityLabel}
+                            </span>
+                          )}
+                          {sillageLabel && (
+                            <span className="inline-flex items-center gap-1 bg-muted/70 rounded-md px-1.5 py-0.5 text-[10px] font-medium">
+                              💨 {sillageLabel}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {(mainOccasions.length > 0 || clima) && (
+                        <div className="flex flex-wrap gap-1">
+                          {mainOccasions.map((o) => (
+                            <span key={o} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                              {o}
+                            </span>
+                          ))}
+                          {clima && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-secondary-foreground border border-border">
+                              {clima === "Quente" ? "🌞" : clima === "Frio" ? "❄️" : "🌤"} {clima}
+                            </span>
+                          )}
+                        </div>
                       )}
                       <p className="text-sm font-bold text-primary mt-auto pt-1">
                         R$ {priceFrasco(p)}
