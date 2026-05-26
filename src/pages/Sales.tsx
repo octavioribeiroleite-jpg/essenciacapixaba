@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { logMovement } from "@/lib/stockMovements";
 import { ML_PER_FRASCO, formatFrascos, perFrasco } from "@/lib/frascos";
+import { ChargeMessageDialog, type ChargePayload } from "@/components/ChargeMessageDialog";
 
 type Product = {
   id: string;
@@ -35,6 +36,8 @@ export default function Sales() {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "split">("cash");
   const [dueDate, setDueDate] = useState("");
   const [isPaid, setIsPaid] = useState(true);
+  const [chargePayload, setChargePayload] = useState<ChargePayload | null>(null);
+  const [chargeOpen, setChargeOpen] = useState(false);
 
   const { data: products } = useQuery({
     queryKey: ["products"],
@@ -136,12 +139,39 @@ export default function Sales() {
         note: `Venda: ${qtyNum} frasco(s)`,
         saleId: saleRow?.id,
       });
+
+      return {
+        qtyNum,
+        priceNum,
+        amountPaid,
+        amountDue,
+        paymentMethod,
+        dueDate: isSplit ? dueDate : !isPaid ? dueDate : null,
+        isPending: isSplit || !isPaid,
+        productName: selected.name,
+        brand: selected.brand,
+      };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["sales-month"] });
       queryClient.invalidateQueries({ queryKey: ["product-sales"] });
       toast.success("Venda registrada!");
+      if (result?.isPending) {
+        setChargePayload({
+          customerName: customerName.trim() || null,
+          productName: result.productName,
+          brand: result.brand,
+          quantity: result.qtyNum,
+          total: result.priceNum,
+          amountPaid: result.amountPaid,
+          amountDue: result.amountDue,
+          paymentMethod: result.paymentMethod,
+          dueDate: result.dueDate,
+          firstPaid: result.paymentMethod === "split" ? true : !result.isPending ? true : false,
+        });
+        setChargeOpen(true);
+      }
       setSelected(null);
       setQty("1");
       setPrice("");
