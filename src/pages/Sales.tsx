@@ -345,6 +345,41 @@ export default function Sales() {
                 </div>
               )}
 
+              {paymentMethod !== "split" && (
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground block">Status do pagamento</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={isPaid ? "default" : "secondary"}
+                      className="text-xs"
+                      onClick={() => setIsPaid(true)}
+                    >
+                      Pago
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={!isPaid ? "default" : "secondary"}
+                      className="text-xs"
+                      onClick={() => setIsPaid(false)}
+                    >
+                      Pendente
+                    </Button>
+                  </div>
+                  {!isPaid && (
+                    <div className="rounded-lg bg-warning/10 border border-warning/30 p-3">
+                      <label className="text-xs text-muted-foreground mb-1 block">Data prevista de pagamento</label>
+                      <Input
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                        className="bg-secondary border-border"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               {qtyNum > 0 && priceNum >= 0 && (
                 <div className="rounded-lg bg-secondary/60 border border-border p-3 space-y-1.5 text-xs">
                   <div className="flex justify-between">
