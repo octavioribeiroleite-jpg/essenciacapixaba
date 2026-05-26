@@ -79,28 +79,46 @@ export type Database = {
       }
       sales: {
         Row: {
+          amount_due: number
+          amount_paid: number
           cost_price: number
           created_at: string
+          customer_name: string | null
+          due_date: string | null
           id: string
           ml_sold: number
+          payment_method: string
+          payment_status: string
           product_id: string
           sale_price: number
           user_id: string
         }
         Insert: {
+          amount_due?: number
+          amount_paid?: number
           cost_price?: number
           created_at?: string
+          customer_name?: string | null
+          due_date?: string | null
           id?: string
           ml_sold: number
+          payment_method?: string
+          payment_status?: string
           product_id: string
           sale_price?: number
           user_id: string
         }
         Update: {
+          amount_due?: number
+          amount_paid?: number
           cost_price?: number
           created_at?: string
+          customer_name?: string | null
+          due_date?: string | null
           id?: string
           ml_sold?: number
+          payment_method?: string
+          payment_status?: string
           product_id?: string
           sale_price?: number
           user_id?: string
