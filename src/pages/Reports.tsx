@@ -716,6 +716,14 @@ export default function Reports() {
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" /> Pagou
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 text-xs gap-1 shrink-0"
+                    onClick={() => openCharge(sale)}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" /> Cobrança
+                  </Button>
                   <button
                     onClick={() => openEditSale(sale)}
                     className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0"
