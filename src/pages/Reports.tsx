@@ -603,6 +603,15 @@ export default function Reports() {
                 <p className="text-sm font-bold text-emerald-600 tabular-nums shrink-0">
                   R$ {Number(sale.sale_price).toFixed(2)}
                 </p>
+                {sale.payment_status === "pending" && (
+                  <button
+                    onClick={() => openCharge(sale)}
+                    title="Gerar cobrança"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-amber-600 hover:bg-amber-50 transition-colors"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button
                   onClick={() => openEditSale(sale)}
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
