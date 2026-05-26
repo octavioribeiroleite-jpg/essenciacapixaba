@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
-import { Search, MessageCircle, Share2, Sparkles, X, Droplet, User, Clock, Wind, CalendarClock } from "lucide-react";
+import {
+  Search, MessageCircle, Share2, Sparkles, Droplet, User, Clock, Wind,
+  SlidersHorizontal, GitCompare, Check, CalendarClock,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ML_PER_FRASCO, perFrasco, formatFrascos } from "@/lib/frascos";
 
-// Cliente anônimo dedicado (não usa a sessão do dono logado)
 const publicSupabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
@@ -22,19 +23,14 @@ const OCCASION_GROUPS: { label: string; items: string[] }[] = [
   { label: "Clima", items: ["Quente", "Frio", "Neutro"] },
   {
     label: "Ocasião",
-    items: [
-      "Trabalho", "Casual", "Pós-banho", "Encontro", "Festa",
-      "Formal", "Especial", "Presente", "Praia/Piscina",
-    ],
+    items: ["Trabalho", "Casual", "Pós-banho", "Encontro", "Festa", "Formal", "Especial", "Presente", "Praia/Piscina"],
   },
-  {
-    label: "Perfil",
-    items: ["Jovem", "Clássico", "Moderno", "Maduro", "Romântico", "Marcante"],
-  },
+  { label: "Perfil", items: ["Jovem", "Clássico", "Moderno", "Maduro", "Romântico", "Marcante"] },
 ];
 
-type Notes = { top?: string[]; heart?: string[]; base?: string[] };
+const OCCASION_QUICK = ["Trabalho", "Casual", "Encontro", "Festa", "Formal", "Especial", "Presente", "Praia/Piscina"];
 
+type Notes = { top?: string[]; heart?: string[]; base?: string[] };
 type Product = {
   id: string;
   name: string;
@@ -53,6 +49,7 @@ type Product = {
 };
 
 type GenderFilter = "Todos" | "Masculino" | "Feminino" | "Unissex";
+type SortOption = "az" | "za" | "preco_asc" | "preco_desc";
 
 export default function Catalog() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -60,6 +57,12 @@ export default function Catalog() {
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<GenderFilter>("Todos");
   const [selected, setSelected] = useState<Product | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [brandFilter, setBrandFilter] = useState<string>("Todas");
+  const [occasionFilter, setOccasionFilter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>("az");
+  const [compareList, setCompareList] = useState<Product[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
   const { id: routeId } = useParams();
   const navigate = useNavigate();
 
@@ -81,9 +84,7 @@ export default function Catalog() {
       setLoading(true);
       const { data, error } = await publicSupabase
         .from("products")
-        .select(
-          "id,name,brand,image_url,sale_price_per_ml,current_ml,total_ml,concentration,gender,longevity,sillage,description,fragrance_notes,occasions"
-        )
+        .select("id,name,brand,image_url,sale_price_per_ml,current_ml,total_ml,concentration,gender,longevity,sillage,description,fragrance_notes,occasions")
         .gt("current_ml", 0)
         .order("name");
       if (error) toast.error("Erro ao carregar catálogo");
@@ -99,49 +100,109 @@ export default function Catalog() {
     }
   }, [routeId, products]);
 
+  const brands = useMemo(() => {
+    const set = new Set(products.map((p) => p.brand || "Sem marca"));
+    return ["Todas", ...Array.from(set).sort()];
+  }, [products]);
+
+  const { minPossible, maxPossible } = useMemo(() => {
+    if (!products.length) return { minPossible: 0, maxPossible: 1000 };
+    const prices = products.map((p) => perFrasco(p.sale_price_per_ml));
+    return {
+      minPossible: Math.floor(Math.min(...prices)),
+      maxPossible: Math.ceil(Math.max(...prices) / 100) * 100,
+    };
+  }, [products]);
+
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
+  useEffect(() => {
+    if (products.length) setPriceRange([minPossible, maxPossible]);
+  }, [minPossible, maxPossible, products.length]);
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return products.filter((p) => {
-      const matchSearch =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        (p.brand ?? "").toLowerCase().includes(q);
+    let list = products.filter((p) => {
+      const matchSearch = !q || p.name.toLowerCase().includes(q) || (p.brand ?? "").toLowerCase().includes(q);
       const matchGender = genderFilter === "Todos" || p.gender === genderFilter;
-      return matchSearch && matchGender;
+      const matchBrand = brandFilter === "Todas" || (p.brand || "Sem marca") === brandFilter;
+      const price = perFrasco(p.sale_price_per_ml);
+      const matchPrice = price >= priceRange[0] && price <= priceRange[1];
+      const matchOccasion = !occasionFilter || (p.occasions ?? []).includes(occasionFilter);
+      return matchSearch && matchGender && matchBrand && matchPrice && matchOccasion;
     });
-  }, [products, search, genderFilter]);
+
+    list = [...list].sort((a, b) => {
+      if (sortBy === "az") return a.name.localeCompare(b.name);
+      if (sortBy === "za") return b.name.localeCompare(a.name);
+      if (sortBy === "preco_asc") return perFrasco(a.sale_price_per_ml) - perFrasco(b.sale_price_per_ml);
+      if (sortBy === "preco_desc") return perFrasco(b.sale_price_per_ml) - perFrasco(a.sale_price_per_ml);
+      return 0;
+    });
+    return list;
+  }, [products, search, genderFilter, brandFilter, priceRange, occasionFilter, sortBy]);
 
   const priceFrasco = (p: Product) => perFrasco(p.sale_price_per_ml).toFixed(2);
   const frascosCount = (p: Product) => Math.floor(Number(p.current_ml) / ML_PER_FRASCO);
 
-  const waLink = (msg: string) =>
-    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+  const waLink = (msg: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
 
   const shareCatalog = async () => {
     const url = `${window.location.origin}/catalogo`;
     try {
       if (navigator.share) await navigator.share({ title: "Essência Capixaba", url });
-      else {
-        await navigator.clipboard.writeText(url);
-        toast.success("Link copiado!");
-      }
-    } catch {
-      /* ignored */
-    }
+      else { await navigator.clipboard.writeText(url); toast.success("Link copiado!"); }
+    } catch { /* ignored */ }
   };
 
   const sharePerfume = async (p: Product) => {
     const url = `${window.location.origin}/catalogo/${p.id}`;
     try {
       if (navigator.share) await navigator.share({ title: p.name, url });
-      else {
-        await navigator.clipboard.writeText(url);
-        toast.success("Link do perfume copiado!");
-      }
-    } catch {
-      /* ignored */
-    }
+      else { await navigator.clipboard.writeText(url); toast.success("Link do perfume copiado!"); }
+    } catch { /* ignored */ }
   };
+
+  const toggleCompare = (p: Product) => {
+    setCompareList((prev) => {
+      if (prev.find((x) => x.id === p.id)) return prev.filter((x) => x.id !== p.id);
+      if (prev.length >= 3) { toast.warning("Máximo 3 perfumes para comparar"); return prev; }
+      return [...prev, p];
+    });
+  };
+
+  const isInCompare = (p: Product) => compareList.some((x) => x.id === p.id);
+
+  const stockBadge = (fr: number) => {
+    if (fr === 0) return { label: "Esgotado", cls: "bg-red-500 text-white" };
+    if (fr <= 2) return { label: "Últimas", cls: "bg-primary text-primary-foreground" };
+    return { label: "Disponível", cls: "bg-green-500 text-white" };
+  };
+
+  const parseLongevity = (v: string | null) => {
+    if (!v) return null;
+    const s = v.toLowerCase();
+    if (s.startsWith("muito alt")) return "4/4";
+    if (s.startsWith("alt")) return "3/4";
+    if (s.startsWith("méd") || s.startsWith("med")) return "2/4";
+    if (s.startsWith("baix")) return "1/4";
+    return v;
+  };
+
+  const parseSillage = (v: string | null) => {
+    if (!v) return null;
+    const s = v.toLowerCase();
+    if (s.startsWith("suave") || s.startsWith("baix") || s.startsWith("intim")) return "1/4";
+    if (s.startsWith("moder") || s.startsWith("méd") || s.startsWith("med")) return "2/4";
+    if (s.startsWith("forte") || s.startsWith("alt")) return "3/4";
+    if (s.startsWith("enorme") || s.startsWith("muito")) return "4/4";
+    return v;
+  };
+
+  const activeFiltersCount = [
+    brandFilter !== "Todas",
+    occasionFilter !== null,
+    priceRange[0] > minPossible || priceRange[1] < maxPossible,
+  ].filter(Boolean).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -158,9 +219,13 @@ export default function Catalog() {
             </p>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <Button size="sm" variant="ghost" onClick={shareCatalog} className="h-8 w-8 p-0">
+            <button
+              onClick={shareCatalog}
+              className="h-8 w-8 rounded-md flex items-center justify-center hover:bg-secondary transition-colors"
+              aria-label="Compartilhar catálogo"
+            >
               <Share2 className="w-4 h-4" />
-            </Button>
+            </button>
             <a
               href={waLink("Olá! Vi o catálogo e quero fazer um pedido.")}
               target="_blank"
@@ -176,9 +241,9 @@ export default function Catalog() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-5 space-y-4">
-        {/* Busca + filtros */}
-        <div className="space-y-3">
-          <div className="relative">
+        {/* Busca + filtros + ordenação */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Buscar perfume ou marca..."
@@ -187,22 +252,129 @@ export default function Catalog() {
               className="pl-9 bg-card border-border rounded-xl text-sm h-10"
             />
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-            {(["Todos", "Masculino", "Feminino", "Unissex"] as GenderFilter[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setGenderFilter(f)}
-                className={`text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-colors ${
-                  genderFilter === f
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-card border border-border text-muted-foreground hover:bg-secondary"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`relative flex items-center gap-1.5 px-3 h-10 rounded-xl border text-sm font-medium transition-colors ${
+              showFilters ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-foreground"
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span className="hidden sm:inline">Filtros</span>
+            {activeFiltersCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="bg-card border border-border rounded-xl text-sm px-2 h-10 text-foreground cursor-pointer"
+          >
+            <option value="az">A→Z</option>
+            <option value="za">Z→A</option>
+            <option value="preco_asc">Menor preço</option>
+            <option value="preco_desc">Maior preço</option>
+          </select>
         </div>
+
+        {/* Painel de filtros */}
+        {showFilters && (
+          <div className="bg-card border border-border rounded-2xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2">
+            <div>
+              <p className="text-xs font-bold text-foreground mb-2 uppercase tracking-wide">Marca</p>
+              <div className="flex flex-wrap gap-1.5">
+                {brands.map((b) => (
+                  <button
+                    key={b}
+                    onClick={() => setBrandFilter(b)}
+                    className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
+                      brandFilter === b ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {b}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold text-foreground mb-2 uppercase tracking-wide">
+                Preço por frasco: R$ {priceRange[0]} — R$ {priceRange[1]}
+              </p>
+              <input
+                type="range"
+                min={minPossible}
+                max={maxPossible}
+                value={priceRange[1]}
+                onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                className="w-full accent-primary"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs font-bold text-foreground mb-2 uppercase tracking-wide">Ocasião</p>
+              <div className="flex flex-wrap gap-1.5">
+                {OCCASION_QUICK.map((o) => (
+                  <button
+                    key={o}
+                    onClick={() => setOccasionFilter(occasionFilter === o ? null : o)}
+                    className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
+                      occasionFilter === o ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {o}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {activeFiltersCount > 0 && (
+              <button
+                onClick={() => {
+                  setBrandFilter("Todas");
+                  setOccasionFilter(null);
+                  setPriceRange([minPossible, maxPossible]);
+                }}
+                className="text-xs text-primary font-medium underline"
+              >
+                Limpar filtros
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Filtro de gênero */}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+          {(["Todos", "Masculino", "Feminino", "Unissex"] as GenderFilter[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setGenderFilter(f)}
+              className={`text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-colors ${
+                genderFilter === f
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card border border-border text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+
+        {/* Comparador CTA */}
+        {compareList.length >= 2 && (
+          <button
+            onClick={() => setShowCompare(true)}
+            className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl shadow-sm hover:opacity-90 transition-opacity"
+          >
+            <GitCompare className="w-4 h-4" />
+            Comparar {compareList.length} perfumes selecionados
+          </button>
+        )}
+
+        <p className="text-[11px] text-muted-foreground">
+          {filtered.length} perfume{filtered.length !== 1 ? "s" : ""} encontrado{filtered.length !== 1 ? "s" : ""}
+        </p>
 
         {/* Grid */}
         {loading ? (
@@ -215,53 +387,77 @@ export default function Catalog() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {filtered.map((p) => {
               const fr = frascosCount(p);
-              const isLow = fr <= 2;
+              const badge = stockBadge(fr);
               const topNote = p.fragrance_notes?.top?.[0];
+              const inCompare = isInCompare(p);
+
               return (
-                <button
+                <div
                   key={p.id}
-                  onClick={() => setSelected(p)}
-                  className="text-left flex flex-col bg-card rounded-2xl border border-border/60 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all active:scale-95"
+                  className="flex flex-col bg-card rounded-2xl border border-border/60 overflow-hidden hover:shadow-md transition-all"
                 >
-                  <div className="w-full aspect-square bg-secondary relative overflow-hidden">
-                    {p.image_url ? (
-                      <img
-                        src={p.image_url}
-                        alt={p.name}
-                        loading="lazy"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-muted-foreground/30">
-                        {p.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    {p.gender && (
-                      <span className="absolute top-1.5 left-1.5 text-[9px] font-bold bg-black/50 text-white px-1.5 py-0.5 rounded-full backdrop-blur-sm">
-                        {p.gender}
+                  <button onClick={() => setSelected(p)} className="text-left flex flex-col flex-1">
+                    <div className="w-full aspect-square bg-secondary relative overflow-hidden">
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} loading="lazy" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-muted-foreground/30">
+                          {p.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      {p.gender && (
+                        <span className="absolute top-1.5 left-1.5 text-[9px] font-bold bg-black/50 text-white px-1.5 py-0.5 rounded-full backdrop-blur-sm">
+                          {p.gender}
+                        </span>
+                      )}
+                      <span className={`absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${badge.cls}`}>
+                        {badge.label}
                       </span>
-                    )}
-                    {isLow && (
-                      <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
-                        Últimas
-                      </span>
-                    )}
+                    </div>
+                    <div className="p-2.5 flex flex-col gap-1 flex-1">
+                      <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{p.name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {p.brand || "Sem marca"}{p.concentration ? ` · ${p.concentration}` : ""}
+                      </p>
+                      {topNote && (
+                        <p className="text-[10px] text-primary/80 truncate">🌿 {topNote}</p>
+                      )}
+                      <p className="text-sm font-bold text-primary mt-auto pt-1">
+                        R$ {priceFrasco(p)}
+                        <span className="text-[10px] font-normal text-muted-foreground">/frasco</span>
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Ações */}
+                  <div className="flex items-stretch gap-1 px-2 pb-2">
+                    <a
+                      href={waLink(`Olá! Quero o perfume *${p.name}* (${p.brand || ""}) por R$ ${priceFrasco(p)}.`)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-semibold px-2 py-2 rounded-xl inline-flex items-center justify-center gap-1 transition-colors"
+                    >
+                      <MessageCircle className="w-3 h-3" /> Pedir
+                    </a>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleCompare(p); }}
+                      className={`px-2 py-2 rounded-xl border text-xs transition-colors ${
+                        inCompare ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:bg-muted"
+                      }`}
+                      title="Comparar"
+                    >
+                      {inCompare ? <Check className="w-3.5 h-3.5" /> : <GitCompare className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); sharePerfume(p); }}
+                      className="px-2 py-2 rounded-xl border border-border text-muted-foreground hover:bg-muted transition-colors"
+                      title="Compartilhar"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <div className="p-2.5 flex flex-col gap-1 flex-1">
-                    <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{p.name}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">
-                      {p.brand || "Sem marca"}
-                      {p.concentration ? ` · ${p.concentration}` : ""}
-                    </p>
-                    {topNote && (
-                      <p className="text-[10px] text-primary/80 truncate">🌿 {topNote}</p>
-                    )}
-                    <p className="text-sm font-bold text-primary mt-auto pt-1">
-                      R$ {priceFrasco(p)}
-                      <span className="text-[10px] font-normal text-muted-foreground">/frasco</span>
-                    </p>
-                  </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -271,6 +467,18 @@ export default function Catalog() {
           <div className="text-center py-16 space-y-2">
             <p className="text-3xl">🔍</p>
             <p className="text-sm text-muted-foreground">Nenhum perfume encontrado.</p>
+            <button
+              onClick={() => {
+                setSearch("");
+                setGenderFilter("Todos");
+                setBrandFilter("Todas");
+                setOccasionFilter(null);
+                setPriceRange([minPossible, maxPossible]);
+              }}
+              className="text-primary text-sm underline"
+            >
+              Limpar todos os filtros
+            </button>
           </div>
         )}
 
@@ -279,7 +487,7 @@ export default function Catalog() {
         </p>
       </main>
 
-      {/* Modal de detalhes */}
+      {/* Modal: Detalhe */}
       <Dialog
         open={!!selected}
         onOpenChange={(o) => {
@@ -330,26 +538,8 @@ export default function Catalog() {
                     {[
                       { label: "Concentração", value: selected.concentration, Icon: Droplet },
                       { label: "Gênero", value: selected.gender, Icon: User },
-                      { label: "Fixação", value: (() => {
-                          const v = selected.longevity;
-                          if (!v) return null;
-                          const s = v.toLowerCase();
-                          if (s.startsWith("muito alt")) return "4/4";
-                          if (s.startsWith("alt")) return "3/4";
-                          if (s.startsWith("méd") || s.startsWith("med")) return "2/4";
-                          if (s.startsWith("baix")) return "1/4";
-                          return v;
-                        })(), Icon: Clock },
-                      { label: "Projeção", value: (() => {
-                          const v = selected.sillage;
-                          if (!v) return null;
-                          const s = v.toLowerCase();
-                          if (s.startsWith("suave") || s.startsWith("baix") || s.startsWith("intim")) return "1/4";
-                          if (s.startsWith("moder") || s.startsWith("méd") || s.startsWith("med")) return "2/4";
-                          if (s.startsWith("forte") || s.startsWith("alt")) return "3/4";
-                          if (s.startsWith("enorme") || s.startsWith("muito")) return "4/4";
-                          return v;
-                        })(), Icon: Wind },
+                      { label: "Fixação", value: parseLongevity(selected.longevity), Icon: Clock },
+                      { label: "Projeção", value: parseSillage(selected.sillage), Icon: Wind },
                     ]
                       .filter((s) => s.value)
                       .map(({ label, value, Icon }) => (
@@ -442,6 +632,57 @@ export default function Catalog() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Comparador */}
+      <Dialog open={showCompare} onOpenChange={setShowCompare}>
+        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
+          <div className="flex items-center gap-2 mb-4">
+            <GitCompare className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-bold text-foreground">Comparar Perfumes</h2>
+          </div>
+          <div className={`grid gap-3 ${compareList.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+            {compareList.map((p) => (
+              <div key={p.id} className="bg-card border border-border rounded-2xl p-3 space-y-3">
+                <div className="text-center space-y-1">
+                  <div className="aspect-square bg-secondary rounded-xl overflow-hidden flex items-center justify-center">
+                    {p.image_url ? (
+                      <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-3xl font-bold text-muted-foreground/30">{p.name.charAt(0)}</span>
+                    )}
+                  </div>
+                  <p className="text-xs font-bold text-foreground leading-tight line-clamp-2">{p.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{p.brand || "Sem marca"}</p>
+                  <p className="text-sm font-bold text-primary">R$ {priceFrasco(p)}</p>
+                </div>
+
+                {[
+                  { label: "Concentração", value: p.concentration },
+                  { label: "Gênero", value: p.gender },
+                  { label: "Fixação", value: parseLongevity(p.longevity) },
+                  { label: "Projeção", value: parseSillage(p.sillage) },
+                  { label: "Frascos", value: `${frascosCount(p)} frasco(s)` },
+                  { label: "Topo", value: p.fragrance_notes?.top?.join(", ") },
+                  { label: "Coração", value: p.fragrance_notes?.heart?.join(", ") },
+                  { label: "Base", value: p.fragrance_notes?.base?.join(", ") },
+                ].map(({ label, value }) => (
+                  <div key={label} className="border-t border-border pt-2">
+                    <p className="text-[9px] text-muted-foreground uppercase tracking-wide">{label}</p>
+                    <p className="text-[11px] text-foreground">{value || "—"}</p>
+                  </div>
+                ))}
+
+                <button
+                  onClick={() => toggleCompare(p)}
+                  className="w-full text-xs text-destructive border border-destructive/30 rounded-xl py-1.5 hover:bg-destructive/10 transition-colors"
+                >
+                  Remover
+                </button>
+              </div>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
