@@ -85,6 +85,8 @@ export type Database = {
           created_at: string
           customer_name: string | null
           due_date: string | null
+          first_due_date: string | null
+          first_paid: boolean
           id: string
           ml_sold: number
           payment_method: string
@@ -100,6 +102,8 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           due_date?: string | null
+          first_due_date?: string | null
+          first_paid?: boolean
           id?: string
           ml_sold: number
           payment_method?: string
@@ -115,6 +119,8 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           due_date?: string | null
+          first_due_date?: string | null
+          first_paid?: boolean
           id?: string
           ml_sold?: number
           payment_method?: string
