@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   BarChart3, Trash2, Pencil, ArrowUp, Settings2,
   TrendingUp, DollarSign, Droplets, ShoppingBag, Trophy, Package,
+  Clock, CheckCircle2, User, Banknote, CreditCard, SplitSquareHorizontal,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -112,6 +113,40 @@ export default function Reports() {
   const totalSales = sales?.length ?? 0;
 
   const recentSales = sales ? [...sales].reverse().slice(0, 20) : [];
+
+  const { data: pendingSales } = useQuery({
+    queryKey: ["pending-sales"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sales")
+        .select("*, products(name, image_url)")
+        .eq("payment_status", "pending")
+        .order("due_date", { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const markPaid = useMutation({
+    mutationFn: async (sale: any) => {
+      const { error } = await supabase
+        .from("sales")
+        .update({
+          payment_status: "paid",
+          amount_paid: Number(sale.sale_price),
+          amount_due: 0,
+        })
+        .eq("id", sale.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-sales"] });
+      queryClient.invalidateQueries({ queryKey: ["report-sales"] });
+      toast.success("Pagamento confirmado!");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   const { data: entries } = useQuery({
     queryKey: ["report-entries", period],
@@ -426,7 +461,14 @@ export default function Reports() {
                   <p className="text-[11px] text-muted-foreground">
                     {format(new Date(sale.created_at), "dd/MM · HH:mm", { locale: ptBR })}
                     {" · "}{Number(sale.ml_sold).toFixed(0)}ml
+                    {sale.customer_name && <> · <User className="inline w-2.5 h-2.5" /> {sale.customer_name}</>}
                   </p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    {sale.payment_method === "cash" && <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md flex items-center gap-1"><Banknote className="w-2.5 h-2.5" />Dinheiro</span>}
+                    {sale.payment_method === "card" && <span className="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded-md flex items-center gap-1"><CreditCard className="w-2.5 h-2.5" />Cartão</span>}
+                    {sale.payment_method === "split" && <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md flex items-center gap-1"><SplitSquareHorizontal className="w-2.5 h-2.5" />50/50</span>}
+                    {sale.payment_status === "pending" && <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md font-medium">Pendente</span>}
+                  </div>
                 </div>
                 <p className="text-sm font-bold text-emerald-600 tabular-nums shrink-0">
                   R$ {Number(sale.sale_price).toFixed(2)}
@@ -463,6 +505,60 @@ export default function Reports() {
       </div>
 
       {/* Stock entries */}
+      {pendingSales && pendingSales.length > 0 && (
+        <div className="bg-card rounded-2xl border border-amber-300/60 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-600" />
+            <h2 className="text-sm font-semibold text-foreground">Pagamentos pendentes</h2>
+            <span className="ml-auto text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+              {pendingSales.length}
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {pendingSales.map((sale: any) => {
+              const due = sale.due_date ? new Date(sale.due_date + "T00:00:00") : null;
+              const overdue = due && due < new Date(new Date().toDateString());
+              return (
+                <div key={sale.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-amber-50/50 transition-colors">
+                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
+                    {sale.products?.image_url ? (
+                      <img src={sale.products.image_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-amber-100">
+                        <Clock className="w-4 h-4 text-amber-600" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {sale.customer_name || "Cliente"} · {sale.products?.name || "?"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Pago: R$ {Number(sale.amount_paid).toFixed(2)} · Resta:{" "}
+                      <span className="font-bold text-amber-700">R$ {Number(sale.amount_due).toFixed(2)}</span>
+                      {due && (
+                        <> · <span className={overdue ? "text-red-600 font-semibold" : ""}>
+                          {overdue ? "Atrasado " : "Vence "}{format(due, "dd/MM/yyyy", { locale: ptBR })}
+                        </span></>
+                      )}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs gap-1 shrink-0"
+                    onClick={() => markPaid.mutate(sale)}
+                    disabled={markPaid.isPending}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Pagou
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Package className="w-4 h-4 text-primary" />

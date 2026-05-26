@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, ShoppingCart } from "lucide-react";
+import { Plus, Search, ShoppingCart, Banknote, CreditCard, SplitSquareHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { logMovement } from "@/lib/stockMovements";
@@ -31,6 +31,9 @@ export default function Sales() {
   const [selected, setSelected] = useState<Product | null>(null);
   const [qty, setQty] = useState("1");
   const [price, setPrice] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "split">("cash");
+  const [dueDate, setDueDate] = useState("");
 
   const { data: products } = useQuery({
     queryKey: ["products"],
@@ -59,6 +62,11 @@ export default function Sales() {
     setSelected(p);
     setQty("1");
     setPrice(perFrasco(p.sale_price_per_ml).toFixed(2));
+    setCustomerName("");
+    setPaymentMethod("cash");
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    setDueDate(d.toISOString().slice(0, 10));
     setPickerOpen(false);
   };
 
@@ -78,8 +86,13 @@ export default function Sales() {
       const priceNum = parseFloat(price);
       if (mlSold > Number(selected.current_ml)) throw new Error("Estoque insuficiente!");
       if (isNaN(priceNum) || priceNum < 0) throw new Error("Informe o valor da venda");
+      if (paymentMethod === "split" && !dueDate) throw new Error("Informe a data do 2º pagamento");
 
       const costPrice = mlSold * Number(selected.cost_per_ml);
+      const isSplit = paymentMethod === "split";
+      const amountPaid = isSplit ? Math.round((priceNum / 2) * 100) / 100 : priceNum;
+      const amountDue = isSplit ? Math.round((priceNum - amountPaid) * 100) / 100 : 0;
+      const paymentStatus = isSplit ? "pending" : "paid";
 
       const { data: saleRow, error: saleError } = await supabase
         .from("sales")
@@ -89,6 +102,12 @@ export default function Sales() {
           ml_sold: mlSold,
           sale_price: priceNum,
           cost_price: costPrice,
+          customer_name: customerName.trim() || null,
+          payment_method: paymentMethod,
+          payment_status: paymentStatus,
+          amount_paid: amountPaid,
+          amount_due: amountDue,
+          due_date: isSplit ? dueDate : null,
         })
         .select("id")
         .single();
@@ -255,6 +274,69 @@ export default function Sales() {
                   placeholder="Edite para aplicar desconto"
                 />
               </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Cliente (opcional)</label>
+                <Input
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Nome do cliente"
+                  maxLength={100}
+                  className="bg-secondary border-border"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Forma de pagamento</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "cash" ? "default" : "secondary"}
+                    className="text-xs flex-col h-auto py-2"
+                    onClick={() => setPaymentMethod("cash")}
+                  >
+                    <Banknote className="h-4 w-4 mb-1" />
+                    Dinheiro
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "card" ? "default" : "secondary"}
+                    className="text-xs flex-col h-auto py-2"
+                    onClick={() => setPaymentMethod("card")}
+                  >
+                    <CreditCard className="h-4 w-4 mb-1" />
+                    Cartão
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "split" ? "default" : "secondary"}
+                    className="text-xs flex-col h-auto py-2"
+                    onClick={() => setPaymentMethod("split")}
+                  >
+                    <SplitSquareHorizontal className="h-4 w-4 mb-1" />
+                    50% / 50%
+                  </Button>
+                </div>
+              </div>
+
+              {paymentMethod === "split" && (
+                <div className="rounded-lg bg-warning/10 border border-warning/30 p-3 space-y-2">
+                  <p className="text-xs text-foreground">
+                    Entrada hoje: <span className="font-bold text-primary">R$ {(priceNum / 2).toFixed(2)}</span>
+                    {" · "}
+                    Restante: <span className="font-bold text-warning">R$ {(priceNum / 2).toFixed(2)}</span>
+                  </p>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Data do 2º pagamento</label>
+                    <Input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                </div>
+              )}
 
               {qtyNum > 0 && priceNum >= 0 && (
                 <div className="rounded-lg bg-secondary/60 border border-border p-3 space-y-1.5 text-xs">
