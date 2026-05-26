@@ -875,41 +875,31 @@ export default function Reports() {
               </div>
 
               {editSaleMethod === "split" && (
-                <div className="rounded-lg bg-muted/40 border border-border p-3 space-y-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Status</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={editSaleStatus === "pending" ? "default" : "secondary"}
-                        className="text-xs"
-                        onClick={() => setEditSaleStatus("pending")}
-                      >
-                        Pendente
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={editSaleStatus === "paid" ? "default" : "secondary"}
-                        className="text-xs"
-                        onClick={() => setEditSaleStatus("paid")}
-                      >
-                        Quitado
-                      </Button>
+                <div className="rounded-lg bg-muted/40 border border-border p-3 space-y-3">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-medium text-foreground">1ª parcela (50%)</label>
+                      <div className="inline-flex bg-card rounded-lg p-0.5 gap-0.5 border border-border">
+                        <button type="button" onClick={() => setEditSaleFirstPaid(true)} className={`text-[10px] px-2 py-1 rounded-md font-medium ${editSaleFirstPaid ? "bg-emerald-500 text-white" : "text-muted-foreground"}`}>Paga</button>
+                        <button type="button" onClick={() => setEditSaleFirstPaid(false)} className={`text-[10px] px-2 py-1 rounded-md font-medium ${!editSaleFirstPaid ? "bg-amber-500 text-white" : "text-muted-foreground"}`}>Pendente</button>
+                      </div>
                     </div>
+                    {!editSaleFirstPaid && (
+                      <Input type="date" value={editSaleFirstDueDate} onChange={(e) => setEditSaleFirstDueDate(e.target.value)} className="rounded-xl h-9" />
+                    )}
                   </div>
-                  {editSaleStatus === "pending" && (
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Data do 2º pagamento</label>
-                      <Input
-                        type="date"
-                        value={editSaleDueDate}
-                        onChange={(e) => setEditSaleDueDate(e.target.value)}
-                        className="rounded-xl"
-                      />
+                  <div className="space-y-2 pt-2 border-t border-border/60">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-medium text-foreground">2ª parcela (50%)</label>
+                      <div className="inline-flex bg-card rounded-lg p-0.5 gap-0.5 border border-border">
+                        <button type="button" onClick={() => setEditSaleSecondPaid(true)} className={`text-[10px] px-2 py-1 rounded-md font-medium ${editSaleSecondPaid ? "bg-emerald-500 text-white" : "text-muted-foreground"}`}>Paga</button>
+                        <button type="button" onClick={() => setEditSaleSecondPaid(false)} className={`text-[10px] px-2 py-1 rounded-md font-medium ${!editSaleSecondPaid ? "bg-amber-500 text-white" : "text-muted-foreground"}`}>Pendente</button>
+                      </div>
                     </div>
-                  )}
+                    {!editSaleSecondPaid && (
+                      <Input type="date" value={editSaleDueDate} onChange={(e) => setEditSaleDueDate(e.target.value)} className="rounded-xl h-9" />
+                    )}
+                  </div>
                 </div>
               )}
 
