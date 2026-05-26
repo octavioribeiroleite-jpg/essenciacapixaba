@@ -30,6 +30,7 @@ import { format, subDays, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 type Period = "week" | "month" | "all";
+type SaleStatusFilter = "all" | "paid" | "pending";
 
 const PERIOD_LABELS: { key: Period; label: string }[] = [
   { key: "week", label: "7 dias" },
@@ -52,6 +53,7 @@ export default function Reports() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState<Period>("month");
+  const [saleStatusFilter, setSaleStatusFilter] = useState<SaleStatusFilter>("all");
   const [editMov, setEditMov] = useState<any | null>(null);
   const [editMovMl, setEditMovMl] = useState("");
   const [editMovNote, setEditMovNote] = useState("");
@@ -165,7 +167,14 @@ export default function Reports() {
   const totalMl = sales?.reduce((s, sale) => s + Number(sale.ml_sold), 0) ?? 0;
   const totalSales = sales?.length ?? 0;
 
-  const recentSales = sales ? [...sales].reverse().slice(0, 20) : [];
+  const filteredSales = sales
+    ? sales.filter((s: any) =>
+        saleStatusFilter === "all" ? true : (s.payment_status || "paid") === saleStatusFilter,
+      )
+    : [];
+  const recentSales = [...filteredSales].reverse().slice(0, 20);
+  const paidCount = sales?.filter((s: any) => (s.payment_status || "paid") === "paid").length ?? 0;
+  const pendingCount = sales?.filter((s: any) => s.payment_status === "pending").length ?? 0;
 
   const { data: pendingSales } = useQuery({
     queryKey: ["pending-sales"],
@@ -489,6 +498,29 @@ export default function Reports() {
           <span className="ml-auto text-[10px] font-semibold text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
             {recentSales.length}
           </span>
+        </div>
+
+        {/* Status filter */}
+        <div className="inline-flex bg-muted/60 rounded-xl p-1 gap-1">
+          {([
+            { key: "all", label: `Todas (${sales?.length ?? 0})` },
+            { key: "paid", label: `Pagas (${paidCount})` },
+            { key: "pending", label: `Pendentes (${pendingCount})` },
+          ] as { key: SaleStatusFilter; label: string }[]).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setSaleStatusFilter(key)}
+              className={`text-[11px] font-medium px-2.5 py-1.5 rounded-lg transition-all ${
+                saleStatusFilter === key
+                  ? key === "pending"
+                    ? "bg-amber-100 text-amber-800 shadow-sm"
+                    : "bg-card shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {recentSales.length === 0 ? (
