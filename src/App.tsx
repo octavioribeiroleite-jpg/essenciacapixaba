@@ -18,6 +18,7 @@ const Scanner = lazy(() => import("@/pages/Scanner"));
 const Sales = lazy(() => import("@/pages/Sales"));
 const Reports = lazy(() => import("@/pages/Reports"));
 const Catalog = lazy(() => import("@/pages/Catalog"));
+const PurchaseOrder = lazy(() => import("@/pages/PurchaseOrder"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const PageFallback = () => (
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/scan" element={<Scanner />} />
               <Route path="/sell" element={<Sales />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/pedidos" element={<PurchaseOrder />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
