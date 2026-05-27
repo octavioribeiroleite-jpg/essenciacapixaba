@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Sparkles, Loader2, Wind, Share2 } from "lucide-react";
+import { Plus, Search, Sparkles, Loader2, Wind, Share2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
@@ -10,8 +10,9 @@ import { ML_PER_FRASCO, formatFrascos, perFrasco } from "@/lib/frascos";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { CATALOG_SEED } from "@/lib/catalogSeed";
 
-type RunMode = "photos" | "notes" | null;
+type RunMode = "photos" | "notes" | "import" | null;
 
 export default function Products() {
   const { user } = useAuth();
@@ -91,6 +92,51 @@ export default function Products() {
     toast.success("Notas e marcas atualizadas!");
   };
 
+  const runImport = async () => {
+    if (!user) return;
+    setRunMode("import");
+    setProgress({ done: 0, total: CATALOG_SEED.length, ok: 0, failed: [] });
+    try {
+      const { data, error } = await supabase.functions.invoke("import-catalog", {
+        body: { items: CATALOG_SEED },
+      });
+      if (error) throw error;
+      setProgress({
+        done: CATALOG_SEED.length,
+        total: CATALOG_SEED.length,
+        ok: data?.created ?? 0,
+        failed: data?.errors ?? [],
+      });
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success(`${data?.created ?? 0} cadastrados, ${data?.skipped ?? 0} já existiam`);
+
+      // Busca imagens dos recém-criados em série
+      const created = (data?.createdIds ?? []) as { id: string; name: string; brand: string | null }[];
+      if (created.length > 0) {
+        setRunMode("photos");
+        setProgress({ done: 0, total: created.length, ok: 0, failed: [] });
+        for (const p of created) {
+          try {
+            const res = await supabase.functions.invoke("fetch-perfume-image", {
+              body: { productId: p.id, name: p.name, brand: p.brand, userId: user.id },
+            });
+            if (res.error || !res.data?.ok) {
+              setProgress((s) => ({ ...s, done: s.done + 1, failed: [...s.failed, p.name] }));
+            } else {
+              setProgress((s) => ({ ...s, done: s.done + 1, ok: s.ok + 1 }));
+            }
+          } catch {
+            setProgress((s) => ({ ...s, done: s.done + 1, failed: [...s.failed, p.name] }));
+          }
+          await new Promise((r) => setTimeout(r, 400));
+        }
+        await queryClient.invalidateQueries({ queryKey: ["products"] });
+      }
+    } catch (e) {
+      toast.error("Erro na importação: " + (e as Error).message);
+    }
+  };
+
   const isRunning = runMode !== null;
   const isDone = progress.done >= progress.total && progress.total > 0;
 
@@ -112,6 +158,18 @@ export default function Products() {
         </Button>
         <Button variant="outline" size="sm" onClick={runNotes} disabled={isRunning} className="flex-1 gap-1.5 text-xs h-9">
           <Wind className="w-3.5 h-3.5 text-blue-500" /> Notas + Marca IA
+        </Button>
+      </div>
+
+      <div className="fade-in">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={runImport}
+          disabled={isRunning}
+          className="w-full gap-1.5 text-xs h-9 border-primary/40"
+        >
+          <Upload className="w-3.5 h-3.5 text-primary" /> Importar planilha ({CATALOG_SEED.length} perfumes)
         </Button>
       </div>
 
