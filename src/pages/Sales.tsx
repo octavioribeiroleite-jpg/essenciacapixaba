@@ -251,8 +251,7 @@ export default function Sales() {
         insertedSales.push(saleRow);
       }
 
-      const isPending =
-        paymentMethod === "split" || (paymentMethod !== "split" && !isPaid);
+      const isPending = paymentMethod === "split" || !isPaid;
       return { isPending };
     },
     onSuccess: (res) => {
