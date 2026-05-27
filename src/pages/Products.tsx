@@ -334,6 +334,7 @@ export default function Products() {
           <thead className="bg-secondary/60 text-muted-foreground">
             <tr className="text-left">
               <th className="py-3 px-4 font-medium w-16">Imagem</th>
+              <th className="py-3 px-4 font-medium w-12">Giro</th>
               <th className="py-3 px-4 font-medium">Nome</th>
               <th className="py-3 px-4 font-medium">Marca</th>
               <th className="py-3 px-4 font-medium text-right">Frascos</th>
@@ -368,6 +369,9 @@ export default function Products() {
                         </span>
                       )}
                     </div>
+                  </td>
+                  <td className="py-2 px-4">
+                    <ClassificationDot c={classifications.get(product.id)} />
                   </td>
                   <td className="py-2 px-4 font-medium text-foreground">{product.name}</td>
                   <td className="py-2 px-4 text-muted-foreground">{product.brand || "—"}</td>
