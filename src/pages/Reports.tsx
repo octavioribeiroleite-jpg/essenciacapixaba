@@ -409,44 +409,41 @@ export default function Reports() {
   });
 
   const deleteSale = useMutation({
-    mutationFn: async (sale: any) => {
+    mutationFn: async (saleOrGroup: any | any[]) => {
       if (!user) throw new Error("Não autenticado");
-      const { data: product, error: pErr } = await supabase
-        .from("products")
-        .select("current_ml")
-        .eq("id", sale.product_id)
-        .single();
-      if (pErr) throw pErr;
-
-      const mlSold = Number(sale.ml_sold);
-      if (mlSold <= 0) throw new Error("Venda inválida: ml vendidos não positivo.");
-      const restored = Math.round(Number(product.current_ml) + mlSold);
-
-      const { error: uErr } = await supabase
-        .from("products")
-        .update({ current_ml: restored })
-        .eq("id", sale.product_id);
-      if (uErr) throw uErr;
-
-      const { error: dErr } = await supabase.from("sales").delete().eq("id", sale.id);
-      if (dErr) throw dErr;
-
-      // Remove o movimento original de venda para não duplicar histórico
-      await supabase
-        .from("stock_movements")
-        .delete()
-        .eq("sale_id", sale.id)
-        .eq("type", "sale");
-
-      await logMovement({
-        userId: user.id,
-        productId: sale.product_id,
-        type: "sale_reversal",
-        mlChange: mlSold,
-        mlAfter: restored,
-        note: "Venda excluída — ml retornados",
-        saleId: sale.id,
-      });
+      const group = Array.isArray(saleOrGroup) ? saleOrGroup : [saleOrGroup];
+      for (const sale of group) {
+        const { data: product, error: pErr } = await supabase
+          .from("products")
+          .select("current_ml")
+          .eq("id", sale.product_id)
+          .single();
+        if (pErr) throw pErr;
+        const mlSold = Number(sale.ml_sold);
+        if (mlSold <= 0) continue;
+        const restored = Math.round(Number(product.current_ml) + mlSold);
+        const { error: uErr } = await supabase
+          .from("products")
+          .update({ current_ml: restored })
+          .eq("id", sale.product_id);
+        if (uErr) throw uErr;
+        const { error: dErr } = await supabase.from("sales").delete().eq("id", sale.id);
+        if (dErr) throw dErr;
+        await supabase
+          .from("stock_movements")
+          .delete()
+          .eq("sale_id", sale.id)
+          .eq("type", "sale");
+        await logMovement({
+          userId: user.id,
+          productId: sale.product_id,
+          type: "sale_reversal",
+          mlChange: mlSold,
+          mlAfter: restored,
+          note: "Venda excluída — ml retornados",
+          saleId: sale.id,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["report-sales"] });
