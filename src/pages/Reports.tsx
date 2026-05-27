@@ -763,9 +763,11 @@ export default function Reports() {
 
       {/* Stock entries */}
       {pendingSales && pendingSales.length > 0 && (() => {
+        const pendingGroups = groupByOrder(pendingSales);
         const totalPending = pendingSales.reduce((s: number, sale: any) => s + Number(sale.amount_due || 0), 0);
-        const overdueCount = pendingSales.filter((sale: any) => {
-          const due = sale.due_date ? new Date(sale.due_date + "T00:00:00") : null;
+        const overdueCount = pendingGroups.filter((g) => {
+          const head = g[0];
+          const due = head.due_date ? new Date(head.due_date + "T00:00:00") : null;
           return due && due < new Date(new Date().toDateString());
         }).length;
         return (
@@ -781,7 +783,7 @@ export default function Reports() {
                 </div>
                 <p className="text-2xl font-bold tabular-nums leading-tight mt-1">R$ {totalPending.toFixed(2)}</p>
                 <p className="text-[11px] text-white/80 mt-0.5">
-                  {pendingSales.length} pagamento{pendingSales.length !== 1 ? "s" : ""} pendente{pendingSales.length !== 1 ? "s" : ""}
+                  {pendingGroups.length} pedido{pendingGroups.length !== 1 ? "s" : ""} pendente{pendingGroups.length !== 1 ? "s" : ""}
                   {overdueCount > 0 && ` · ${overdueCount} em atraso`}
                 </p>
               </div>
@@ -796,16 +798,20 @@ export default function Reports() {
             <Clock className="w-4 h-4 text-amber-600" />
             <h2 className="text-sm font-semibold text-foreground">Pagamentos pendentes</h2>
             <span className="ml-auto text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-              {pendingSales.length}
+              {pendingGroups.length}
             </span>
           </div>
           <div className="space-y-2">
-            {pendingSales.map((sale: any) => {
-              const due = sale.due_date ? new Date(sale.due_date + "T00:00:00") : null;
+            {pendingGroups.map((group: any[]) => {
+              const head = group[0];
+              const isMulti = group.length > 1;
+              const groupDue = group.reduce((s, x) => s + Number(x.amount_due || 0), 0);
+              const groupPaid = group.reduce((s, x) => s + Number(x.amount_paid || 0), 0);
+              const due = head.due_date ? new Date(head.due_date + "T00:00:00") : null;
               const overdue = due && due < new Date(new Date().toDateString());
               return (
                 <div
-                  key={sale.id}
+                  key={head.order_id || head.id}
                   className={`rounded-xl border p-3 space-y-2.5 transition-colors ${
                     overdue
                       ? "border-red-200 bg-red-50/40"
@@ -814,21 +820,30 @@ export default function Reports() {
                 >
                   {/* Top row: image + info + amount */}
                   <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
-                      {sale.products?.image_url ? (
-                        <img src={sale.products.image_url} alt="" className="w-full h-full object-cover" />
+                    <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
+                      {head.products?.image_url ? (
+                        <img src={head.products.image_url} alt="" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-amber-100">
                           <Clock className="w-4 h-4 text-amber-600" />
                         </div>
                       )}
+                      {isMulti && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shadow">
+                          {group.length}
+                        </span>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-foreground truncate">
-                        {sale.customer_name || "Cliente"}
+                        {head.customer_name || "Cliente"}
                       </p>
                       <p className="text-[11px] text-muted-foreground truncate">
-                        {sale.products?.name || "?"}
+                        {isMulti
+                          ? group
+                              .map((x) => x.products?.name ?? "?")
+                              .join(" + ")
+                          : head.products?.name || "?"}
                       </p>
                       {due && (
                         <p className={`text-[11px] mt-0.5 font-medium ${overdue ? "text-red-600" : "text-muted-foreground"}`}>
@@ -840,11 +855,11 @@ export default function Reports() {
                     <div className="text-right shrink-0">
                       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Resta</p>
                       <p className="text-base font-bold text-amber-700 tabular-nums leading-tight">
-                        R$ {Number(sale.amount_due).toFixed(2)}
+                        R$ {groupDue.toFixed(2)}
                       </p>
-                      {Number(sale.amount_paid) > 0 && (
+                      {groupPaid > 0 && (
                         <p className="text-[10px] text-muted-foreground tabular-nums">
-                          Pago R$ {Number(sale.amount_paid).toFixed(2)}
+                          Pago R$ {groupPaid.toFixed(2)}
                         </p>
                       )}
                     </div>
@@ -855,7 +870,7 @@ export default function Reports() {
                       size="sm"
                       variant="outline"
                       className="h-8 text-xs gap-1 flex-1 min-w-0"
-                      onClick={() => markPaid.mutate(sale)}
+                      onClick={() => markPaid.mutate(group)}
                       disabled={markPaid.isPending}
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Pagou
@@ -864,12 +879,12 @@ export default function Reports() {
                       size="sm"
                       variant="secondary"
                       className="h-8 text-xs gap-1 flex-1 min-w-0"
-                      onClick={() => openCharge(sale)}
+                      onClick={() => openCharge(group)}
                     >
                       <Sparkles className="w-3.5 h-3.5" /> Cobrança
                     </Button>
                     <button
-                      onClick={() => openEditSale(sale)}
+                      onClick={() => openEditSale(group)}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0 border border-border/60"
                       aria-label="Editar venda"
                     >
