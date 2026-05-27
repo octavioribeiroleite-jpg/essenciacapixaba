@@ -64,8 +64,23 @@ Deno.serve(async (req) => {
       linhas.push(`💰 Valor total: ${ctx.valor_total}`);
       if (Number(amountPaid) > 0) linhas.push(`✅ Já pago: ${ctx.valor_pago}`);
       linhas.push(`📌 Pendente: ${ctx.valor_pendente}`);
-      if (ctx.vencimento) linhas.push(`📅 Vencimento: ${ctx.vencimento}`);
-      else if (ctx.vencimento_1a_parcela) linhas.push(`📅 Vencimento da 1ª parcela: ${ctx.vencimento_1a_parcela}`);
+      if (paymentMethod === "split") {
+        const total = Number(total ?? 0);
+        const metade = (Number(body.total || 0) / 2).toFixed(2);
+        linhas.push("");
+        linhas.push("📆 Parcelamento 50% / 50%:");
+        linhas.push(
+          `   • 1ª parcela: R$ ${metade}${ctx.vencimento_1a_parcela ? ` — vence em ${ctx.vencimento_1a_parcela}` : ""}` +
+            `${firstPaid ? " ✅ paga" : " ⏳ pendente"}`,
+        );
+        linhas.push(
+          `   • 2ª parcela: R$ ${metade}${ctx.vencimento ? ` — vence em ${ctx.vencimento}` : ""} ⏳ pendente`,
+        );
+      } else if (ctx.vencimento) {
+        linhas.push(`📅 Vencimento: ${ctx.vencimento}`);
+      } else if (ctx.vencimento_1a_parcela) {
+        linhas.push(`📅 Vencimento: ${ctx.vencimento_1a_parcela}`);
+      }
       linhas.push("");
       linhas.push("💳 Pode pagar via PIX ou dinheiro.");
       linhas.push("");
