@@ -154,6 +154,47 @@ export default function Catalog() {
 
   const shareCatalog = () => setShareOpen(true);
 
+  const exportPDF = () => {
+    const rows = filtered.map((p) => {
+      const fr = frascosCount(p);
+      const badge = fr === 0 ? "Sob encomenda" : fr <= 2 ? "Últimas" : "Disponível";
+      const badgeColor = fr === 0 ? "#b45309" : fr <= 2 ? "#9333ea" : "#15803d";
+      return `<tr>
+        <td style="padding:8px;border-bottom:1px solid #eee">${p.name}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee;color:#666">${p.brand ?? "—"}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee">${p.gender ?? "—"}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;color:#7c3aed">R$ ${priceFrasco(p)}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee;color:${badgeColor};font-weight:600">${badge}</td>
+      </tr>`;
+    }).join("");
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
+      <title>Catálogo Essência Capixaba</title>
+      <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#111}
+        @media print{body{-webkit-print-color-adjust:exact}}
+        table{width:100%;border-collapse:collapse;margin-top:8px}
+        th{background:#4c1d95;color:#fff;padding:10px 8px;text-align:left;font-size:12px}
+      </style></head><body>
+      <div style="background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff;padding:24px 32px">
+        <h1 style="font-size:22px;font-weight:700">🌸 Essência Capixaba</h1>
+        <p style="font-size:12px;opacity:.85;margin-top:4px">${filtered.length} perfume(s) · Frascos de 100ml · Pedidos via WhatsApp</p>
+      </div>
+      <div style="padding:16px 32px">
+        <table>
+          <thead><tr><th>Perfume</th><th>Marca</th><th>Gênero</th><th style="text-align:right">Preço</th><th>Estoque</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <p style="margin-top:24px;font-size:10px;color:#888;text-align:center">Gerado em ${new Date().toLocaleString("pt-BR")}</p>
+      </div>
+      <script>window.onload=()=>setTimeout(()=>window.print(),300);</script>
+      </body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) { toast.error("Permita pop-ups para gerar o PDF"); return; }
+    w.document.write(html);
+    w.document.close();
+  };
+
   const copyCatalogLink = async () => {
     try {
       await navigator.clipboard.writeText(catalogUrl);
@@ -238,6 +279,14 @@ export default function Catalog() {
             </p>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              onClick={exportPDF}
+              className="h-8 px-2.5 rounded-md flex items-center gap-1 hover:bg-secondary transition-colors text-xs font-semibold text-violet-700"
+              title="Gerar PDF do catálogo atual"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">PDF</span>
+            </button>
             <button
               onClick={shareCatalog}
               className="h-8 w-8 rounded-md flex items-center justify-center hover:bg-secondary transition-colors"

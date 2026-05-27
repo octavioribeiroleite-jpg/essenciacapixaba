@@ -104,6 +104,16 @@ export default function Sales() {
       const amountDue = Math.round((priceNum - amountPaid) * 100) / 100;
       const paymentStatus = isSplit || !isPaid ? "pending" : "paid";
 
+      // Deduz estoque atomicamente (bloqueia a linha para evitar race condition)
+      const { data: deductResult, error: rpcErr } = await supabase.rpc(
+        "deduct_stock" as any,
+        { p_product_id: selected.id, p_ml: mlSold } as any,
+      );
+      if (rpcErr) throw rpcErr;
+      const dr = deductResult as { ok: boolean; new_ml?: number; error?: string } | null;
+      if (!dr?.ok) throw new Error(dr?.error || "Estoque insuficiente");
+      const newMl = Number(dr.new_ml);
+
       const { data: saleRow, error: saleError } = await supabase
         .from("sales")
         .insert({
@@ -121,14 +131,14 @@ export default function Sales() {
         })
         .select("id")
         .single();
-      if (saleError) throw saleError;
-
-      const newMl = Number(selected.current_ml) - mlSold;
-      const { error: updateError } = await supabase
-        .from("products")
-        .update({ current_ml: newMl })
-        .eq("id", selected.id);
-      if (updateError) throw updateError;
+      if (saleError) {
+        // Tenta restaurar o estoque caso a inserção da venda falhe
+        await supabase
+          .from("products")
+          .update({ current_ml: Number(selected.current_ml) })
+          .eq("id", selected.id);
+        throw saleError;
+      }
 
       await logMovement({
         userId: user.id,

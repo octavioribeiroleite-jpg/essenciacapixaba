@@ -394,12 +394,18 @@ export default function ProductDetail() {
         image_url = urlData.publicUrl;
       }
 
+      // Recalcula current_ml proporcionalmente quando o total muda
+      const oldTotalMl = Number(product.total_ml) || ml;
+      const ratio = oldTotalMl > 0 ? Number(product.current_ml) / oldTotalMl : 1;
+      const newCurrentMl = Math.min(Math.round(ratio * ml), ml);
+
       const { error } = await supabase
         .from("products")
         .update({
           name: editName.trim(),
           brand: editBrand.trim() || null,
           total_ml: ml,
+          current_ml: newCurrentMl,
           cost_per_ml: cost / ml,
           sale_price_per_ml: sale / ml,
           image_url,
