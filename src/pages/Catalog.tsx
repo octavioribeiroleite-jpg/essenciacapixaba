@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
 import {
   Search, MessageCircle, Share2, Sparkles, Droplet, User, Clock, Wind,
-  SlidersHorizontal, GitCompare, Check, CalendarClock, Copy,
+  SlidersHorizontal, GitCompare, Check, CalendarClock, Copy, FileDown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -86,7 +86,7 @@ export default function Catalog() {
     (async () => {
       setLoading(true);
       const { data, error } = await publicSupabase
-        .from("products")
+        .from("catalog_products" as any)
         .select("id,name,brand,image_url,sale_price_per_ml,current_ml,total_ml,concentration,gender,longevity,sillage,description,fragrance_notes,occasions,olfactory_family")
         .order("name");
       if (error) toast.error("Erro ao carregar catálogo");
