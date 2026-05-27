@@ -1,64 +1,63 @@
-## Gestão de Pedidos de Reposição
+## Recibo PDF de venda com Pix
 
-Sistema de semáforo automático baseado em vendas + tela dedicada para gerar encomenda e enviar por WhatsApp.
+Adiciona geração de PDF do pedido para enviar ao cliente, com itens, valores, observações de pagamento e o Pix em destaque. O botão "Copiar Pix" fica no app (PDF não tem botão funcional de copiar), e o PDF mostra a chave grande pra cliente selecionar/copiar manualmente.
 
-### 1. Classificação automática (semáforo)
+### Onde aparece
 
-Cálculo feito em tempo real no app, sem coluna nova no banco, usando vendas dos últimos **60 dias**:
+Onde já existe o botão **"Gerar Cobrança"** (mensagem WhatsApp):
+- `src/pages/Sales.tsx` — depois de finalizar uma venda
+- `src/pages/Reports.tsx` — em cada pedido do histórico e nos pendentes
 
-- 🟢 **Verde (Alta demanda)**: 3+ frascos vendidos nos últimos 60 dias → estocar mais
-- 🟡 **Amarelo (Demanda média)**: 1-2 frascos vendidos → manter em estoque
-- 🔴 **Vermelho (Baixa/sem giro)**: 0 vendas nos 60 dias → não repor
-- ⚪ **Cinza (Novo)**: cadastrado há menos de 30 dias e sem histórico
+Vira um par de botões: **"WhatsApp"** (atual) + **"PDF"** (novo).
 
-A bolinha aparece em:
-- Cards do `Products.tsx` (mobile) no canto superior da imagem
-- Coluna nova "Giro" na tabela desktop com tooltip mostrando "X vendas em 60 dias"
+### Conteúdo do PDF (1 página A4)
 
-### 2. Nova página `/pedidos` (Encomenda)
-
-Acessível por botão **"Gerar encomenda"** no topo de `Products.tsx`.
-
-Mostra automaticamente todos os perfumes com **estoque ≤ 1 frasco E classificação ≠ vermelho**, ordenados por:
-1. Verdes primeiro (mais vendidos)
-2. Amarelos
-3. Estoque zerado antes de estoque 1
-
-Para cada item da lista:
-- Foto, nome, marca
-- Badge do semáforo + "X vendas/60d"
-- Estoque atual
-- Campo numérico de **quantidade a pedir** (você digita na hora; sugestão inicial: verde=3, amarelo=2)
-- Botão ✕ para remover do pedido
-- Custo unitário e subtotal
-
-Ações no rodapé:
-- Botão **"+ Adicionar perfume"** abre seletor para incluir manualmente qualquer item do catálogo (mesmo vermelhos ou com estoque alto)
-- **Total geral** (soma dos custos)
-- Botão **"Copiar mensagem WhatsApp"** e **"Enviar no WhatsApp"** (abre wa.me com texto pronto)
-
-### 3. Formato da mensagem WhatsApp
-
-```
-*Pedido de Reposição - Essência Capixaba*
-Data: 27/05/2026
-
-1. Khamrah (Lattafa) — 3 frascos
-2. Asad (Lattafa) — 2 frascos
-3. Queen of Arabia (Lattafa) — 2 frascos
-
-Total: 7 frascos
-Valor estimado: R$ 1.260,00
-
-Obrigada!
+```text
+┌──────────────────────────────────────────────┐
+│  Essência Capixaba                Recibo     │
+│  Pedido #ABC123 · 27/05/2026                 │
+│  Cliente: Elaine                             │
+├──────────────────────────────────────────────┤
+│  [img]  Khamrah (Lattafa)        R$ 250,00  │
+│         1 frasco · R$ 250,00                 │
+│                                              │
+│  [img]  Asad (Lattafa)           R$ 250,00  │
+│         1 frasco · R$ 250,00                 │
+├──────────────────────────────────────────────┤
+│                          Total: R$ 500,00    │
+│                                              │
+│  Pagamento: 50% entrada + 50% em 30 dias    │
+│   1ª parcela: R$ 250,00 — paga              │
+│   2ª parcela: R$ 250,00 — vence 27/06/2026  │
+├──────────────────────────────────────────────┤
+│             Pague com Pix                    │
+│  ┌────────────────────────────────────────┐ │
+│  │ 5cc152c8-df7e-412e-9a88-3ed13a0bd4da   │ │
+│  └────────────────────────────────────────┘ │
+│   Chave aleatória — copie e cole no seu app │
+│                                              │
+│        Obrigada pela preferência!            │
+└──────────────────────────────────────────────┘
 ```
 
-### Arquivos a alterar/criar
+### Dialog "Compartilhar recibo"
 
-- `src/lib/productClassification.ts` (novo) — função que recebe lista de vendas + produtos e devolve `Map<productId, {tier: 'green'|'yellow'|'red'|'gray', salesCount}>`
-- `src/components/ClassificationDot.tsx` (novo) — bolinha colorida com tooltip
-- `src/pages/Products.tsx` — botão "Gerar encomenda", bolinhas nos cards e na tabela
-- `src/pages/PurchaseOrder.tsx` (novo) — tela `/pedidos`
-- `src/App.tsx` — registrar rota `/pedidos` (lazy)
+Substitui o `ChargeMessageDialog` atual com 3 ações:
+1. **Copiar mensagem** (texto WhatsApp — já existe)
+2. **Copiar chave Pix** — copia `5cc152c8-df7e-412e-9a88-3ed13a0bd4da` e dá toast "Pix copiado!"
+3. **Baixar PDF** — gera e baixa `recibo-<cliente>-<data>.pdf`
 
-Sem alterações no banco — tudo derivado de `sales` + `products` já existentes.
+A chave Pix fica salva em uma constante `PIX_KEY` em `src/lib/pix.ts` (fácil trocar depois).
+
+### Arquivos
+
+- `src/lib/pix.ts` (novo) — `PIX_KEY` exportada
+- `src/lib/receiptPdf.ts` (novo) — função `generateReceiptPdf(order)` usando **jsPDF** (já leve, sem peso extra significativo)
+- `src/components/ChargeMessageDialog.tsx` — adiciona botões "Copiar Pix" e "Baixar PDF"
+- `bun add jspdf` — dependência
+
+### Detalhes técnicos
+
+- Imagens dos produtos: baixadas via `fetch` → `dataURL` antes de montar o PDF (jsPDF precisa de data URL). Quando uma imagem falhar, mostra um placeholder cinza com a inicial.
+- Sem alteração de banco e sem edge function — tudo no cliente.
+- A "observação de como foi feito" usa o `payment_method`/`payment_status` e datas (dinheiro, cartão, ou 50/50 com vencimentos), no mesmo formato da mensagem WhatsApp.
