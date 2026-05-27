@@ -87,7 +87,6 @@ export default function Catalog() {
       const { data, error } = await publicSupabase
         .from("products")
         .select("id,name,brand,image_url,sale_price_per_ml,current_ml,total_ml,concentration,gender,longevity,sillage,description,fragrance_notes,occasions")
-        .gt("current_ml", 0)
         .order("name");
       if (error) toast.error("Erro ao carregar catálogo");
       setProducts((data as Product[]) || []);
