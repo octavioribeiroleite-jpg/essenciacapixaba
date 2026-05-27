@@ -217,12 +217,30 @@ export default function Reports() {
     enabled: !!user,
   });
 
-  // Chart data: group by day
+  // Lucro realizado = lucro proporcional ao valor já recebido
+  const realizedProfit = (sale: any) => {
+    const price = Number(sale.sale_price);
+    const profit = price - Number(sale.cost_price);
+    if (price <= 0) return 0;
+    const status = sale.payment_status || "paid";
+    if (status === "paid") return profit;
+    const paid = Number(sale.amount_paid || 0);
+    return profit * (paid / price);
+  };
+  const forecastProfit = (sale: any) => {
+    const price = Number(sale.sale_price);
+    const profit = price - Number(sale.cost_price);
+    if (price <= 0) return 0;
+    const due = Number(sale.amount_due || 0);
+    return profit * (due / price);
+  };
+
+  // Chart data: group by day (lucro = somente recebido)
   const chartData = sales?.reduce((acc: any[], sale) => {
     const day = format(new Date(sale.created_at), "dd/MM");
     const existing = acc.find((d) => d.day === day);
     const revenue = Number(sale.sale_price);
-    const profit = revenue - Number(sale.cost_price);
+    const profit = realizedProfit(sale);
     if (existing) {
       existing.receita += revenue;
       existing.lucro += profit;
@@ -249,7 +267,7 @@ export default function Reports() {
     : [];
 
   const totalRevenue = sales?.reduce((s, sale) => s + Number(sale.sale_price), 0) ?? 0;
-  const totalProfit = sales?.reduce((s, sale) => s + Number(sale.sale_price) - Number(sale.cost_price), 0) ?? 0;
+  const totalProfit = sales?.reduce((s, sale) => s + realizedProfit(sale), 0) ?? 0;
   const totalMl = sales?.reduce((s, sale) => s + Number(sale.ml_sold), 0) ?? 0;
   const totalSales = sales?.length ?? 0;
 
