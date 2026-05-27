@@ -1,0 +1,1 @@
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS order_id uuid; CREATE INDEX IF NOT EXISTS sales_order_id_idx ON public.sales(order_id);

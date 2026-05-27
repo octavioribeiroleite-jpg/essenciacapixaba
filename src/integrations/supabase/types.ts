@@ -92,6 +92,7 @@ export type Database = {
           first_paid: boolean
           id: string
           ml_sold: number
+          order_id: string | null
           payment_method: string
           payment_status: string
           product_id: string
@@ -109,6 +110,7 @@ export type Database = {
           first_paid?: boolean
           id?: string
           ml_sold: number
+          order_id?: string | null
           payment_method?: string
           payment_status?: string
           product_id: string
@@ -126,6 +128,7 @@ export type Database = {
           first_paid?: boolean
           id?: string
           ml_sold?: number
+          order_id?: string | null
           payment_method?: string
           payment_status?: string
           product_id?: string

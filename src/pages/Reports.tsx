@@ -23,7 +23,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { logMovement } from "@/lib/stockMovements";
 import { ML_PER_FRASCO } from "@/lib/frascos";
 import { MOVEMENT_LABEL, type MovementType } from "@/lib/stockMovements";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format, subDays, startOfMonth } from "date-fns";
@@ -59,6 +59,7 @@ export default function Reports() {
   const [editMovMl, setEditMovMl] = useState("");
   const [editMovNote, setEditMovNote] = useState("");
   const [editSale, setEditSale] = useState<any | null>(null);
+  const [editSaleGroup, setEditSaleGroup] = useState<any[]>([]);
   const [editSaleCustomer, setEditSaleCustomer] = useState("");
   const [editSaleMethod, setEditSaleMethod] = useState<"cash" | "card" | "split">("cash");
   const [editSaleStatus, setEditSaleStatus] = useState<"paid" | "pending">("paid");
@@ -67,21 +68,39 @@ export default function Reports() {
   const [chargePayload, setChargePayload] = useState<ChargePayload | null>(null);
   const [chargeOpen, setChargeOpen] = useState(false);
 
-  const openCharge = (sale: any) => {
-    const due = sale.due_date ? new Date(sale.due_date + "T00:00:00") : null;
+  const openCharge = (saleOrGroup: any | any[]) => {
+    const group = Array.isArray(saleOrGroup) ? saleOrGroup : [saleOrGroup];
+    const head = group[0];
+    const due = head.due_date ? new Date(head.due_date + "T00:00:00") : null;
     const overdue = due ? due < new Date(new Date().toDateString()) : false;
+    const totalQty = group.reduce(
+      (s, x) => s + Math.max(1, Math.round(Number(x.ml_sold) / ML_PER_FRASCO)),
+      0,
+    );
+    const total = group.reduce((s, x) => s + Number(x.sale_price), 0);
+    const paid = group.reduce((s, x) => s + Number(x.amount_paid || 0), 0);
+    const dueAmt = group.reduce((s, x) => s + Number(x.amount_due || 0), 0);
+    const productName =
+      group.length > 1
+        ? group
+            .map(
+              (x) =>
+                `${Math.max(1, Math.round(Number(x.ml_sold) / ML_PER_FRASCO))}x ${x.products?.name ?? "Perfume"}`,
+            )
+            .join(" + ")
+        : head.products?.name || "Perfume";
     setChargePayload({
-      customerName: sale.customer_name,
-      productName: sale.products?.name || "Perfume",
-      brand: sale.products?.brand || null,
-      quantity: Math.max(1, Math.round(Number(sale.ml_sold) / ML_PER_FRASCO)),
-      total: Number(sale.sale_price),
-      amountPaid: Number(sale.amount_paid || 0),
-      amountDue: Number(sale.amount_due || 0),
-      paymentMethod: sale.payment_method,
-      dueDate: sale.due_date,
-      firstDueDate: sale.first_due_date,
-      firstPaid: sale.first_paid,
+      customerName: head.customer_name,
+      productName,
+      brand: head.products?.brand || null,
+      quantity: totalQty,
+      total,
+      amountPaid: paid,
+      amountDue: dueAmt,
+      paymentMethod: head.payment_method,
+      dueDate: head.due_date,
+      firstDueDate: head.first_due_date,
+      firstPaid: head.first_paid,
       isOverdue: overdue,
     });
     setChargeOpen(true);
@@ -90,23 +109,31 @@ export default function Reports() {
   const [editSaleFirstDueDate, setEditSaleFirstDueDate] = useState("");
   const [editSalePrice, setEditSalePrice] = useState("");
 
-  const openEditSale = (sale: any) => {
-    setEditSale(sale);
-    setEditSaleCustomer(sale.customer_name || "");
-    setEditSaleMethod((sale.payment_method as any) || "cash");
-    setEditSaleStatus((sale.payment_status as any) || "paid");
-    setEditSaleDueDate(sale.due_date || "");
-    setEditSaleFirstPaid(sale.first_paid ?? true);
-    setEditSaleSecondPaid((sale.payment_status || "paid") === "paid");
-    setEditSaleFirstDueDate(sale.first_due_date || "");
-    setEditSalePrice(String(sale.sale_price));
+  const openEditSale = (saleOrGroup: any | any[]) => {
+    const group = Array.isArray(saleOrGroup) ? saleOrGroup : [saleOrGroup];
+    const head = group[0];
+    setEditSale(head);
+    setEditSaleGroup(group);
+    setEditSaleCustomer(head.customer_name || "");
+    setEditSaleMethod((head.payment_method as any) || "cash");
+    setEditSaleStatus((head.payment_status as any) || "paid");
+    setEditSaleDueDate(head.due_date || "");
+    setEditSaleFirstPaid(head.first_paid ?? true);
+    setEditSaleSecondPaid((head.payment_status || "paid") === "paid");
+    setEditSaleFirstDueDate(head.first_due_date || "");
+    setEditSalePrice(
+      String(group.reduce((s, x) => s + Number(x.sale_price), 0)),
+    );
   };
 
   const updateSale = useMutation({
     mutationFn: async () => {
       if (!editSale) throw new Error("Erro");
+      const group = editSaleGroup.length ? editSaleGroup : [editSale];
+      const isMulti = group.length > 1;
       const priceNum = parseFloat(editSalePrice);
       if (isNaN(priceNum) || priceNum < 0) throw new Error("Valor inválido");
+      const groupTotalOriginal = group.reduce((s, x) => s + Number(x.sale_price), 0);
       const isSplit = editSaleMethod === "split";
       let status: "paid" | "pending";
       let amountPaid: number;
@@ -130,21 +157,34 @@ export default function Reports() {
         secondDue = status === "pending" ? editSaleDueDate : null;
       }
       const amountDue = Math.round((priceNum - amountPaid) * 100) / 100;
-      const { error } = await supabase
-        .from("sales")
-        .update({
-          customer_name: editSaleCustomer.trim() || null,
-          payment_method: editSaleMethod,
-          payment_status: status,
-          amount_paid: amountPaid,
-          amount_due: amountDue,
-          sale_price: priceNum,
-          due_date: secondDue,
-          first_paid: firstPaid,
-          first_due_date: firstDue,
-        })
-        .eq("id", editSale.id);
-      if (error) throw error;
+      // Distribui pagamento entre os itens proporcionalmente
+      for (const row of group) {
+        const ratio = groupTotalOriginal > 0
+          ? Number(row.sale_price) / groupTotalOriginal
+          : 1 / group.length;
+        const itemSalePrice = isMulti
+          ? Number(row.sale_price) // não altera preço por item no modo grupo
+          : priceNum;
+        const itemPaid = isMulti
+          ? Math.round(amountPaid * ratio * 100) / 100
+          : amountPaid;
+        const itemDue = Math.round((itemSalePrice - itemPaid) * 100) / 100;
+        const { error } = await supabase
+          .from("sales")
+          .update({
+            customer_name: editSaleCustomer.trim() || null,
+            payment_method: editSaleMethod,
+            payment_status: status,
+            amount_paid: itemPaid,
+            amount_due: itemDue,
+            sale_price: itemSalePrice,
+            due_date: secondDue,
+            first_paid: firstPaid,
+            first_due_date: firstDue,
+          })
+          .eq("id", row.id);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["report-sales"] });
@@ -152,6 +192,7 @@ export default function Reports() {
       queryClient.invalidateQueries({ queryKey: ["sales-month"] });
       toast.success("Venda atualizada!");
       setEditSale(null);
+      setEditSaleGroup([]);
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -217,9 +258,36 @@ export default function Reports() {
         saleStatusFilter === "all" ? true : (s.payment_status || "paid") === saleStatusFilter,
       )
     : [];
-  const recentSales = [...filteredSales].reverse().slice(0, 20);
-  const paidCount = sales?.filter((s: any) => (s.payment_status || "paid") === "paid").length ?? 0;
-  const pendingCount = sales?.filter((s: any) => s.payment_status === "pending").length ?? 0;
+
+  // Agrupa vendas por order_id (vendas sem order_id são tratadas como pedidos únicos)
+  const groupByOrder = (rows: any[]): any[][] => {
+    const map = new Map<string, any[]>();
+    for (const s of rows) {
+      const key = s.order_id || s.id;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(s);
+    }
+    return Array.from(map.values());
+  };
+  const recentGroups = useMemo(() => {
+    const groups = groupByOrder(filteredSales);
+    groups.sort(
+      (a, b) =>
+        new Date(b[0].created_at).getTime() - new Date(a[0].created_at).getTime(),
+    );
+    return groups.slice(0, 20);
+  }, [filteredSales]);
+  const allGroupsCount = sales ? groupByOrder(sales).length : 0;
+  const paidCount = sales
+    ? groupByOrder(sales).filter((g) =>
+        g.every((s: any) => (s.payment_status || "paid") === "paid"),
+      ).length
+    : 0;
+  const pendingCount = sales
+    ? groupByOrder(sales).filter((g) =>
+        g.some((s: any) => s.payment_status === "pending"),
+      ).length
+    : 0;
 
   const { data: pendingSales } = useQuery({
     queryKey: ["pending-sales"],
@@ -236,16 +304,20 @@ export default function Reports() {
   });
 
   const markPaid = useMutation({
-    mutationFn: async (sale: any) => {
-      const { error } = await supabase
-        .from("sales")
-        .update({
-          payment_status: "paid",
-          amount_paid: Number(sale.sale_price),
-          amount_due: 0,
-        })
-        .eq("id", sale.id);
-      if (error) throw error;
+    mutationFn: async (saleOrGroup: any | any[]) => {
+      const group = Array.isArray(saleOrGroup) ? saleOrGroup : [saleOrGroup];
+      for (const sale of group) {
+        const { error } = await supabase
+          .from("sales")
+          .update({
+            payment_status: "paid",
+            amount_paid: Number(sale.sale_price),
+            amount_due: 0,
+            first_paid: true,
+          })
+          .eq("id", sale.id);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-sales"] });
@@ -364,44 +436,41 @@ export default function Reports() {
   });
 
   const deleteSale = useMutation({
-    mutationFn: async (sale: any) => {
+    mutationFn: async (saleOrGroup: any | any[]) => {
       if (!user) throw new Error("Não autenticado");
-      const { data: product, error: pErr } = await supabase
-        .from("products")
-        .select("current_ml")
-        .eq("id", sale.product_id)
-        .single();
-      if (pErr) throw pErr;
-
-      const mlSold = Number(sale.ml_sold);
-      if (mlSold <= 0) throw new Error("Venda inválida: ml vendidos não positivo.");
-      const restored = Math.round(Number(product.current_ml) + mlSold);
-
-      const { error: uErr } = await supabase
-        .from("products")
-        .update({ current_ml: restored })
-        .eq("id", sale.product_id);
-      if (uErr) throw uErr;
-
-      const { error: dErr } = await supabase.from("sales").delete().eq("id", sale.id);
-      if (dErr) throw dErr;
-
-      // Remove o movimento original de venda para não duplicar histórico
-      await supabase
-        .from("stock_movements")
-        .delete()
-        .eq("sale_id", sale.id)
-        .eq("type", "sale");
-
-      await logMovement({
-        userId: user.id,
-        productId: sale.product_id,
-        type: "sale_reversal",
-        mlChange: mlSold,
-        mlAfter: restored,
-        note: "Venda excluída — ml retornados",
-        saleId: sale.id,
-      });
+      const group = Array.isArray(saleOrGroup) ? saleOrGroup : [saleOrGroup];
+      for (const sale of group) {
+        const { data: product, error: pErr } = await supabase
+          .from("products")
+          .select("current_ml")
+          .eq("id", sale.product_id)
+          .single();
+        if (pErr) throw pErr;
+        const mlSold = Number(sale.ml_sold);
+        if (mlSold <= 0) continue;
+        const restored = Math.round(Number(product.current_ml) + mlSold);
+        const { error: uErr } = await supabase
+          .from("products")
+          .update({ current_ml: restored })
+          .eq("id", sale.product_id);
+        if (uErr) throw uErr;
+        const { error: dErr } = await supabase.from("sales").delete().eq("id", sale.id);
+        if (dErr) throw dErr;
+        await supabase
+          .from("stock_movements")
+          .delete()
+          .eq("sale_id", sale.id)
+          .eq("type", "sale");
+        await logMovement({
+          userId: user.id,
+          productId: sale.product_id,
+          type: "sale_reversal",
+          mlChange: mlSold,
+          mlAfter: restored,
+          note: "Venda excluída — ml retornados",
+          saleId: sale.id,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["report-sales"] });
@@ -541,14 +610,14 @@ export default function Reports() {
           <ShoppingBag className="w-4 h-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">Vendas recentes</h2>
           <span className="ml-auto text-[10px] font-semibold text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
-            {recentSales.length}
+            {recentGroups.length}
           </span>
         </div>
 
         {/* Status filter */}
         <div className="inline-flex bg-muted/60 rounded-xl p-1 gap-1">
           {([
-            { key: "all", label: `Todas (${sales?.length ?? 0})` },
+            { key: "all", label: `Todas (${allGroupsCount})` },
             { key: "paid", label: `Pagas (${paidCount})` },
             { key: "pending", label: `Pendentes (${pendingCount})` },
           ] as { key: SaleStatusFilter; label: string }[]).map(({ key, label }) => (
@@ -568,101 +637,137 @@ export default function Reports() {
           ))}
         </div>
 
-        {recentSales.length === 0 ? (
+        {recentGroups.length === 0 ? (
           <div className="text-center py-6">
             <p className="text-3xl mb-1">📦</p>
             <p className="text-xs text-muted-foreground">Nenhuma venda no período.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {recentSales.map((sale: any) => (
-              <div key={sale.id} className="p-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-11 h-11 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
-                    {sale.products?.image_url ? (
-                      <img src={sale.products.image_url} alt={sale.products?.name ?? ""} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-primary/10">
-                        <span className="text-sm font-bold text-primary">{sale.products?.name?.charAt(0) ?? "?"}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{sale.products?.name || "?"}</p>
-                      <p className="text-sm font-bold text-emerald-600 tabular-nums shrink-0 whitespace-nowrap">
-                        R$ {Number(sale.sale_price).toFixed(2)}
-                      </p>
+            {recentGroups.map((group: any[]) => {
+              const head = group[0];
+              const isMulti = group.length > 1;
+              const groupTotal = group.reduce((s, x) => s + Number(x.sale_price), 0);
+              const totalFr = group.reduce(
+                (s, x) => s + Math.max(1, Math.round(Number(x.ml_sold) / 100)),
+                0,
+              );
+              const hasPending = group.some((x) => x.payment_status === "pending");
+              return (
+                <div
+                  key={head.order_id || head.id}
+                  className="p-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
+                      {head.products?.image_url ? (
+                        <img src={head.products.image_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                          <span className="text-sm font-bold text-primary">{head.products?.name?.charAt(0) ?? "?"}</span>
+                        </div>
+                      )}
+                      {isMulti && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shadow">
+                          {group.length}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      {format(new Date(sale.created_at), "dd/MM · HH:mm", { locale: ptBR })}
-                      {" · "}{Math.max(1, Math.round(Number(sale.ml_sold) / 100))} frasco(s)
-                      {sale.customer_name && <> · {sale.customer_name}</>}
-                    </p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {isMulti
+                            ? `Pedido · ${group.length} perfumes`
+                            : head.products?.name || "?"}
+                        </p>
+                        <p className="text-sm font-bold text-emerald-600 tabular-nums shrink-0 whitespace-nowrap">
+                          R$ {groupTotal.toFixed(2)}
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {format(new Date(head.created_at), "dd/MM · HH:mm", { locale: ptBR })}
+                        {" · "}{totalFr} frasco(s)
+                        {head.customer_name && <> · {head.customer_name}</>}
+                      </p>
+                      {isMulti && (
+                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                          {group
+                            .map(
+                              (x) =>
+                                `${Math.max(1, Math.round(Number(x.ml_sold) / 100))}x ${x.products?.name ?? "?"}`,
+                            )
+                            .join(" + ")}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center justify-between gap-2 mt-2 min-w-0">
-                  <div className="flex items-center gap-1 flex-wrap min-w-0">
-                    {sale.payment_method === "cash" && <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><Banknote className="w-2.5 h-2.5" />Dinheiro</span>}
-                    {sale.payment_method === "card" && <span className="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><CreditCard className="w-2.5 h-2.5" />Cartão</span>}
-                    {sale.payment_method === "split" && <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><SplitSquareHorizontal className="w-2.5 h-2.5" />50/50</span>}
-                    {sale.payment_status === "pending" && <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md font-medium whitespace-nowrap">Pendente</span>}
-                  </div>
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    {sale.payment_status === "pending" && (
-                      <button
-                        onClick={() => openCharge(sale)}
-                        title="Gerar cobrança"
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-amber-600 hover:bg-amber-50 active:bg-amber-100 transition-colors"
-                      >
-                        <Sparkles className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => openEditSale(sale)}
-                      title="Editar"
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted active:bg-muted/70 transition-colors"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <button title="Excluir" className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 active:bg-red-100 transition-colors">
-                          <Trash2 className="w-4 h-4" />
+                  <div className="flex items-center justify-between gap-2 mt-2 min-w-0">
+                    <div className="flex items-center gap-1 flex-wrap min-w-0">
+                      {head.payment_method === "cash" && <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><Banknote className="w-2.5 h-2.5" />Dinheiro</span>}
+                      {head.payment_method === "card" && <span className="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><CreditCard className="w-2.5 h-2.5" />Cartão</span>}
+                      {head.payment_method === "split" && <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><SplitSquareHorizontal className="w-2.5 h-2.5" />50/50</span>}
+                      {hasPending && <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md font-medium whitespace-nowrap">Pendente</span>}
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {hasPending && (
+                        <button
+                          onClick={() => openCharge(group)}
+                          title="Gerar cobrança"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-amber-600 hover:bg-amber-50 active:bg-amber-100 transition-colors"
+                        >
+                          <Sparkles className="w-4 h-4" />
                         </button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir venda?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {Math.max(1, Math.round(Number(sale.ml_sold) / 100))} frasco(s) de {sale.products?.name || "?"} voltarão ao estoque.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => deleteSale.mutate(sale)}
-                        disabled={deleteSale.isPending}
-                        className="bg-red-500 hover:bg-red-600"
+                      )}
+                      <button
+                        onClick={() => openEditSale(group)}
+                        title="Editar"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted active:bg-muted/70 transition-colors"
                       >
-                        Excluir
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button title="Excluir" className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 active:bg-red-100 transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Excluir {isMulti ? "pedido" : "venda"}?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {totalFr} frasco(s) {isMulti ? `de ${group.length} perfumes` : `de ${head.products?.name || "?"}`} voltarão ao estoque.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteSale.mutate(group)}
+                              disabled={deleteSale.isPending}
+                              className="bg-red-500 hover:bg-red-600"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* Stock entries */}
       {pendingSales && pendingSales.length > 0 && (() => {
+        const pendingGroups = groupByOrder(pendingSales);
         const totalPending = pendingSales.reduce((s: number, sale: any) => s + Number(sale.amount_due || 0), 0);
-        const overdueCount = pendingSales.filter((sale: any) => {
-          const due = sale.due_date ? new Date(sale.due_date + "T00:00:00") : null;
+        const overdueCount = pendingGroups.filter((g) => {
+          const head = g[0];
+          const due = head.due_date ? new Date(head.due_date + "T00:00:00") : null;
           return due && due < new Date(new Date().toDateString());
         }).length;
         return (
@@ -678,7 +783,7 @@ export default function Reports() {
                 </div>
                 <p className="text-2xl font-bold tabular-nums leading-tight mt-1">R$ {totalPending.toFixed(2)}</p>
                 <p className="text-[11px] text-white/80 mt-0.5">
-                  {pendingSales.length} pagamento{pendingSales.length !== 1 ? "s" : ""} pendente{pendingSales.length !== 1 ? "s" : ""}
+                  {pendingGroups.length} pedido{pendingGroups.length !== 1 ? "s" : ""} pendente{pendingGroups.length !== 1 ? "s" : ""}
                   {overdueCount > 0 && ` · ${overdueCount} em atraso`}
                 </p>
               </div>
@@ -693,16 +798,20 @@ export default function Reports() {
             <Clock className="w-4 h-4 text-amber-600" />
             <h2 className="text-sm font-semibold text-foreground">Pagamentos pendentes</h2>
             <span className="ml-auto text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-              {pendingSales.length}
+              {pendingGroups.length}
             </span>
           </div>
           <div className="space-y-2">
-            {pendingSales.map((sale: any) => {
-              const due = sale.due_date ? new Date(sale.due_date + "T00:00:00") : null;
+            {pendingGroups.map((group: any[]) => {
+              const head = group[0];
+              const isMulti = group.length > 1;
+              const groupDue = group.reduce((s, x) => s + Number(x.amount_due || 0), 0);
+              const groupPaid = group.reduce((s, x) => s + Number(x.amount_paid || 0), 0);
+              const due = head.due_date ? new Date(head.due_date + "T00:00:00") : null;
               const overdue = due && due < new Date(new Date().toDateString());
               return (
                 <div
-                  key={sale.id}
+                  key={head.order_id || head.id}
                   className={`rounded-xl border p-3 space-y-2.5 transition-colors ${
                     overdue
                       ? "border-red-200 bg-red-50/40"
@@ -711,21 +820,30 @@ export default function Reports() {
                 >
                   {/* Top row: image + info + amount */}
                   <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
-                      {sale.products?.image_url ? (
-                        <img src={sale.products.image_url} alt="" className="w-full h-full object-cover" />
+                    <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
+                      {head.products?.image_url ? (
+                        <img src={head.products.image_url} alt="" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-amber-100">
                           <Clock className="w-4 h-4 text-amber-600" />
                         </div>
                       )}
+                      {isMulti && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shadow">
+                          {group.length}
+                        </span>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-foreground truncate">
-                        {sale.customer_name || "Cliente"}
+                        {head.customer_name || "Cliente"}
                       </p>
                       <p className="text-[11px] text-muted-foreground truncate">
-                        {sale.products?.name || "?"}
+                        {isMulti
+                          ? group
+                              .map((x) => x.products?.name ?? "?")
+                              .join(" + ")
+                          : head.products?.name || "?"}
                       </p>
                       {due && (
                         <p className={`text-[11px] mt-0.5 font-medium ${overdue ? "text-red-600" : "text-muted-foreground"}`}>
@@ -737,11 +855,11 @@ export default function Reports() {
                     <div className="text-right shrink-0">
                       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Resta</p>
                       <p className="text-base font-bold text-amber-700 tabular-nums leading-tight">
-                        R$ {Number(sale.amount_due).toFixed(2)}
+                        R$ {groupDue.toFixed(2)}
                       </p>
-                      {Number(sale.amount_paid) > 0 && (
+                      {groupPaid > 0 && (
                         <p className="text-[10px] text-muted-foreground tabular-nums">
-                          Pago R$ {Number(sale.amount_paid).toFixed(2)}
+                          Pago R$ {groupPaid.toFixed(2)}
                         </p>
                       )}
                     </div>
@@ -752,7 +870,7 @@ export default function Reports() {
                       size="sm"
                       variant="outline"
                       className="h-8 text-xs gap-1 flex-1 min-w-0"
-                      onClick={() => markPaid.mutate(sale)}
+                      onClick={() => markPaid.mutate(group)}
                       disabled={markPaid.isPending}
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Pagou
@@ -761,12 +879,12 @@ export default function Reports() {
                       size="sm"
                       variant="secondary"
                       className="h-8 text-xs gap-1 flex-1 min-w-0"
-                      onClick={() => openCharge(sale)}
+                      onClick={() => openCharge(group)}
                     >
                       <Sparkles className="w-3.5 h-3.5" /> Cobrança
                     </Button>
                     <button
-                      onClick={() => openEditSale(sale)}
+                      onClick={() => openEditSale(group)}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0 border border-border/60"
                       aria-label="Editar venda"
                     >
