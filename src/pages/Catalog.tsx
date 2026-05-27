@@ -134,6 +134,9 @@ export default function Catalog() {
     });
 
     list = [...list].sort((a, b) => {
+      const aOut = Number(a.current_ml) <= 0 ? 1 : 0;
+      const bOut = Number(b.current_ml) <= 0 ? 1 : 0;
+      if (aOut !== bOut) return aOut - bOut;
       if (sortBy === "az") return a.name.localeCompare(b.name);
       if (sortBy === "za") return b.name.localeCompare(a.name);
       if (sortBy === "preco_asc") return perFrasco(a.sale_price_per_ml) - perFrasco(b.sale_price_per_ml);
