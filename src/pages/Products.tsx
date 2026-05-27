@@ -10,7 +10,8 @@ import { ML_PER_FRASCO, formatFrascos, perFrasco } from "@/lib/frascos";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { CATALOG_SEED } from "@/lib/catalogSeed";
+
+const SEED_COUNT = 168;
 
 type RunMode = "photos" | "notes" | "import" | null;
 
@@ -95,8 +96,9 @@ export default function Products() {
   const runImport = async () => {
     if (!user) return;
     setRunMode("import");
-    setProgress({ done: 0, total: CATALOG_SEED.length, ok: 0, failed: [] });
+    setProgress({ done: 0, total: SEED_COUNT, ok: 0, failed: [] });
     try {
+      const { CATALOG_SEED } = await import("@/lib/catalogSeed");
       const { data, error } = await supabase.functions.invoke("import-catalog", {
         body: { items: CATALOG_SEED },
       });
@@ -169,7 +171,7 @@ export default function Products() {
           disabled={isRunning}
           className="w-full gap-1.5 text-xs h-9 border-primary/40"
         >
-          <Upload className="w-3.5 h-3.5 text-primary" /> Importar planilha ({CATALOG_SEED.length} perfumes)
+          <Upload className="w-3.5 h-3.5 text-primary" /> Importar planilha ({SEED_COUNT} perfumes)
         </Button>
       </div>
 
