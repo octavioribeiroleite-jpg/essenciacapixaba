@@ -610,14 +610,14 @@ export default function Reports() {
           <ShoppingBag className="w-4 h-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">Vendas recentes</h2>
           <span className="ml-auto text-[10px] font-semibold text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
-            {recentSales.length}
+            {recentGroups.length}
           </span>
         </div>
 
         {/* Status filter */}
         <div className="inline-flex bg-muted/60 rounded-xl p-1 gap-1">
           {([
-            { key: "all", label: `Todas (${sales?.length ?? 0})` },
+            { key: "all", label: `Todas (${allGroupsCount})` },
             { key: "paid", label: `Pagas (${paidCount})` },
             { key: "pending", label: `Pendentes (${pendingCount})` },
           ] as { key: SaleStatusFilter; label: string }[]).map(({ key, label }) => (
@@ -637,92 +637,126 @@ export default function Reports() {
           ))}
         </div>
 
-        {recentSales.length === 0 ? (
+        {recentGroups.length === 0 ? (
           <div className="text-center py-6">
             <p className="text-3xl mb-1">📦</p>
             <p className="text-xs text-muted-foreground">Nenhuma venda no período.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {recentSales.map((sale: any) => (
-              <div key={sale.id} className="p-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-11 h-11 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
-                    {sale.products?.image_url ? (
-                      <img src={sale.products.image_url} alt={sale.products?.name ?? ""} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-primary/10">
-                        <span className="text-sm font-bold text-primary">{sale.products?.name?.charAt(0) ?? "?"}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{sale.products?.name || "?"}</p>
-                      <p className="text-sm font-bold text-emerald-600 tabular-nums shrink-0 whitespace-nowrap">
-                        R$ {Number(sale.sale_price).toFixed(2)}
-                      </p>
+            {recentGroups.map((group: any[]) => {
+              const head = group[0];
+              const isMulti = group.length > 1;
+              const groupTotal = group.reduce((s, x) => s + Number(x.sale_price), 0);
+              const totalFr = group.reduce(
+                (s, x) => s + Math.max(1, Math.round(Number(x.ml_sold) / 100)),
+                0,
+              );
+              const hasPending = group.some((x) => x.payment_status === "pending");
+              return (
+                <div
+                  key={head.order_id || head.id}
+                  className="p-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
+                      {head.products?.image_url ? (
+                        <img src={head.products.image_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                          <span className="text-sm font-bold text-primary">{head.products?.name?.charAt(0) ?? "?"}</span>
+                        </div>
+                      )}
+                      {isMulti && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shadow">
+                          {group.length}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      {format(new Date(sale.created_at), "dd/MM · HH:mm", { locale: ptBR })}
-                      {" · "}{Math.max(1, Math.round(Number(sale.ml_sold) / 100))} frasco(s)
-                      {sale.customer_name && <> · {sale.customer_name}</>}
-                    </p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {isMulti
+                            ? `Pedido · ${group.length} perfumes`
+                            : head.products?.name || "?"}
+                        </p>
+                        <p className="text-sm font-bold text-emerald-600 tabular-nums shrink-0 whitespace-nowrap">
+                          R$ {groupTotal.toFixed(2)}
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {format(new Date(head.created_at), "dd/MM · HH:mm", { locale: ptBR })}
+                        {" · "}{totalFr} frasco(s)
+                        {head.customer_name && <> · {head.customer_name}</>}
+                      </p>
+                      {isMulti && (
+                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                          {group
+                            .map(
+                              (x) =>
+                                `${Math.max(1, Math.round(Number(x.ml_sold) / 100))}x ${x.products?.name ?? "?"}`,
+                            )
+                            .join(" + ")}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center justify-between gap-2 mt-2 min-w-0">
-                  <div className="flex items-center gap-1 flex-wrap min-w-0">
-                    {sale.payment_method === "cash" && <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><Banknote className="w-2.5 h-2.5" />Dinheiro</span>}
-                    {sale.payment_method === "card" && <span className="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><CreditCard className="w-2.5 h-2.5" />Cartão</span>}
-                    {sale.payment_method === "split" && <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><SplitSquareHorizontal className="w-2.5 h-2.5" />50/50</span>}
-                    {sale.payment_status === "pending" && <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md font-medium whitespace-nowrap">Pendente</span>}
-                  </div>
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    {sale.payment_status === "pending" && (
-                      <button
-                        onClick={() => openCharge(sale)}
-                        title="Gerar cobrança"
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-amber-600 hover:bg-amber-50 active:bg-amber-100 transition-colors"
-                      >
-                        <Sparkles className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => openEditSale(sale)}
-                      title="Editar"
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted active:bg-muted/70 transition-colors"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <button title="Excluir" className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 active:bg-red-100 transition-colors">
-                          <Trash2 className="w-4 h-4" />
+                  <div className="flex items-center justify-between gap-2 mt-2 min-w-0">
+                    <div className="flex items-center gap-1 flex-wrap min-w-0">
+                      {head.payment_method === "cash" && <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><Banknote className="w-2.5 h-2.5" />Dinheiro</span>}
+                      {head.payment_method === "card" && <span className="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><CreditCard className="w-2.5 h-2.5" />Cartão</span>}
+                      {head.payment_method === "split" && <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><SplitSquareHorizontal className="w-2.5 h-2.5" />50/50</span>}
+                      {hasPending && <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md font-medium whitespace-nowrap">Pendente</span>}
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {hasPending && (
+                        <button
+                          onClick={() => openCharge(group)}
+                          title="Gerar cobrança"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-amber-600 hover:bg-amber-50 active:bg-amber-100 transition-colors"
+                        >
+                          <Sparkles className="w-4 h-4" />
                         </button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir venda?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {Math.max(1, Math.round(Number(sale.ml_sold) / 100))} frasco(s) de {sale.products?.name || "?"} voltarão ao estoque.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => deleteSale.mutate(sale)}
-                        disabled={deleteSale.isPending}
-                        className="bg-red-500 hover:bg-red-600"
+                      )}
+                      <button
+                        onClick={() => openEditSale(group)}
+                        title="Editar"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted active:bg-muted/70 transition-colors"
                       >
-                        Excluir
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button title="Excluir" className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 active:bg-red-100 transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Excluir {isMulti ? "pedido" : "venda"}?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {totalFr} frasco(s) {isMulti ? `de ${group.length} perfumes` : `de ${head.products?.name || "?"}`} voltarão ao estoque.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteSale.mutate(group)}
+                              disabled={deleteSale.isPending}
+                              className="bg-red-500 hover:bg-red-600"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
