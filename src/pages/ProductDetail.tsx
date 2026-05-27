@@ -326,15 +326,17 @@ export default function ProductDetail() {
   const openDetails = () => {
     if (!product) return;
     const p: any = product;
-    const notes = (p.fragrance_notes ?? {}) as { top?: string[]; heart?: string[]; base?: string[] };
+    const rawNotes = (p.fragrance_notes ?? {}) as { top?: unknown; heart?: unknown; base?: unknown };
+    const toStr = (v: unknown) =>
+      Array.isArray(v) ? v.join(", ") : typeof v === "string" ? v : "";
     setDDescription(p.description ?? "");
     setDConcentration(p.concentration ?? "");
     setDGender(p.gender ?? "");
     setDLongevity(p.longevity ?? "");
     setDSillage(p.sillage ?? "");
-    setDTop((notes.top ?? []).join(", "));
-    setDHeart((notes.heart ?? []).join(", "));
-    setDBase((notes.base ?? []).join(", "));
+    setDTop(toStr(rawNotes.top));
+    setDHeart(toStr(rawNotes.heart));
+    setDBase(toStr(rawNotes.base));
     setDOccasions(Array.isArray(p.occasions) ? p.occasions : []);
     setDetailsOpen(true);
   };
