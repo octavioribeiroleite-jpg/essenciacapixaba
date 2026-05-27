@@ -275,6 +275,9 @@ export default function Products() {
                     {product.gender}
                   </span>
                 )}
+                <span className="absolute top-1.5 right-1.5">
+                  <ClassificationDot c={classifications.get(product.id)} />
+                </span>
               </div>
 
               <div className="p-2.5 flex flex-col gap-1.5">
