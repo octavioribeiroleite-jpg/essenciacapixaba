@@ -556,9 +556,18 @@ export default function ProductDetail() {
       {/* Perfume details cards */}
       {(() => {
         const p: any = product;
-        const notes = (p?.fragrance_notes ?? null) as
-          | { top?: string[]; heart?: string[]; base?: string[] }
+        const toArr = (v: unknown): string[] => {
+          if (Array.isArray(v)) return v.filter(Boolean).map(String);
+          if (typeof v === "string" && v.trim())
+            return v.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+          return [];
+        };
+        const rawNotes = (p?.fragrance_notes ?? null) as
+          | { top?: unknown; heart?: unknown; base?: unknown }
           | null;
+        const notes = rawNotes
+          ? { top: toArr(rawNotes.top), heart: toArr(rawNotes.heart), base: toArr(rawNotes.base) }
+          : null;
         const hasNotes =
           !!notes &&
           ((notes.top?.length ?? 0) + (notes.heart?.length ?? 0) + (notes.base?.length ?? 0) > 0);
