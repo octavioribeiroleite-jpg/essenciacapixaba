@@ -2,14 +2,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Sparkles, Loader2, Wind, Share2, Upload } from "lucide-react";
+import { Plus, Search, Sparkles, Loader2, Wind, Share2, Upload, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ML_PER_FRASCO, formatFrascos, perFrasco } from "@/lib/frascos";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { classifyProducts } from "@/lib/productClassification";
+import { ClassificationDot } from "@/components/ClassificationDot";
 
 const SEED_COUNT = 168;
 
@@ -40,6 +42,25 @@ export default function Products() {
     },
     enabled: !!user,
   });
+
+  const { data: salesForClass } = useQuery({
+    queryKey: ["sales-classification"],
+    queryFn: async () => {
+      const since = new Date(Date.now() - 60 * 86400000).toISOString();
+      const { data, error } = await supabase
+        .from("sales")
+        .select("product_id, ml_sold, created_at")
+        .gte("created_at", since);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const classifications = useMemo(
+    () => classifyProducts(products ?? [], salesForClass ?? []),
+    [products, salesForClass]
+  );
 
   const filtered = products?.filter(
     (p) =>
@@ -151,6 +172,17 @@ export default function Products() {
         </div>
         <Button size="sm" onClick={() => navigate("/products/new")} className="gap-1.5 text-xs h-8">
           <Plus className="w-3.5 h-3.5" /> Novo
+        </Button>
+      </div>
+
+      <div className="fade-in">
+        <Button
+          size="sm"
+          onClick={() => navigate("/pedidos")}
+          className="w-full gap-1.5 text-xs h-10 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30"
+          variant="outline"
+        >
+          <ShoppingCart className="w-3.5 h-3.5" /> Gerar encomenda de reposição
         </Button>
       </div>
 
