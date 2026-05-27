@@ -244,7 +244,7 @@ export type Database = {
     }
     Functions: {
       deduct_stock: {
-        Args: { p_ml: number; p_product_id: string; p_user_id: string }
+        Args: { p_ml: number; p_product_id: string }
         Returns: Json
       }
     }
