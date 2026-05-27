@@ -37,10 +37,10 @@ const App = () => (
         <AuthProvider>
           <Suspense fallback={<PageFallback />}>
           <Routes>
-            <Route path="/login" element={<Login />} />
             <Route path="/catalogo" element={<Catalog />} />
             <Route path="/catalogo/:id" element={<Catalog />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<Navigate to="/catalogo" replace />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/products" element={<Products />} />
