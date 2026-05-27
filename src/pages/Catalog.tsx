@@ -46,6 +46,7 @@ type Product = {
   description: string | null;
   fragrance_notes: Notes | null;
   occasions: string[] | null;
+  olfactory_family: string | null;
 };
 
 type GenderFilter = "Todos" | "Masculino" | "Feminino" | "Unissex";
@@ -86,7 +87,7 @@ export default function Catalog() {
       setLoading(true);
       const { data, error } = await publicSupabase
         .from("products")
-        .select("id,name,brand,image_url,sale_price_per_ml,current_ml,total_ml,concentration,gender,longevity,sillage,description,fragrance_notes,occasions")
+        .select("id,name,brand,image_url,sale_price_per_ml,current_ml,total_ml,concentration,gender,longevity,sillage,description,fragrance_notes,occasions,olfactory_family")
         .order("name");
       if (error) toast.error("Erro ao carregar catálogo");
       setProducts((data as Product[]) || []);
@@ -453,6 +454,9 @@ export default function Catalog() {
                       <p className="text-[10px] text-muted-foreground truncate">
                         {p.brand || "Sem marca"}{p.concentration ? ` · ${p.concentration}` : ""}
                       </p>
+                      {p.olfactory_family && (
+                        <p className="text-[10px] text-primary/70 italic truncate capitalize">{p.olfactory_family}</p>
+                      )}
                       {topNote && (
                         <p className="text-[10px] text-primary/80 truncate">🌿 {topNote}</p>
                       )}
@@ -680,6 +684,7 @@ export default function Catalog() {
                   <div className="grid grid-cols-2 gap-2">
                     {[
                       { label: "Concentração", value: selected.concentration, Icon: Droplet },
+                      { label: "Família olfativa", value: selected.olfactory_family, Icon: Droplet },
                       { label: "Gênero", value: selected.gender, Icon: User },
                       { label: "Fixação", value: parseLongevity(selected.longevity), Icon: Clock },
                       { label: "Projeção", value: parseSillage(selected.sillage), Icon: Wind },
@@ -803,6 +808,7 @@ export default function Catalog() {
 
                 {[
                   { label: "Concentração", value: p.concentration },
+                  { label: "Família olfativa", value: p.olfactory_family },
                   { label: "Gênero", value: p.gender },
                   { label: "Fixação", value: parseLongevity(p.longevity) },
                   { label: "Projeção", value: parseSillage(p.sillage) },
