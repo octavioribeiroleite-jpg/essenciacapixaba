@@ -102,6 +102,17 @@ export default function Reports() {
       firstDueDate: head.first_due_date,
       firstPaid: head.first_paid,
       isOverdue: overdue,
+      items: group.map((x: any) => {
+        const qty = Math.max(1, Math.round(Number(x.ml_sold) / ML_PER_FRASCO));
+        return {
+          name: x.products?.name ?? "Perfume",
+          brand: x.products?.brand ?? null,
+          qty,
+          total: Number(x.sale_price),
+          imageUrl: x.products?.image_url ?? null,
+        };
+      }),
+      orderRef: head.order_id || head.id,
     });
     setChargeOpen(true);
   };
