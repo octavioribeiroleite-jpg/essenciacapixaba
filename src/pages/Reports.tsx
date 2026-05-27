@@ -783,6 +783,10 @@ export default function Reports() {
       {pendingSales && pendingSales.length > 0 && (() => {
         const pendingGroups = groupByOrder(pendingSales);
         const totalPending = pendingSales.reduce((s: number, sale: any) => s + Number(sale.amount_due || 0), 0);
+        const totalForecastProfit = pendingSales.reduce(
+          (s: number, sale: any) => s + forecastProfit(sale),
+          0,
+        );
         const overdueCount = pendingGroups.filter((g) => {
           const head = g[0];
           const due = head.due_date ? new Date(head.due_date + "T00:00:00") : null;
@@ -803,6 +807,9 @@ export default function Reports() {
                 <p className="text-[11px] text-white/80 mt-0.5">
                   {pendingGroups.length} pedido{pendingGroups.length !== 1 ? "s" : ""} pendente{pendingGroups.length !== 1 ? "s" : ""}
                   {overdueCount > 0 && ` · ${overdueCount} em atraso`}
+                </p>
+                <p className="text-[11px] text-white/90 mt-1 font-medium">
+                  Lucro previsto: R$ {totalForecastProfit.toFixed(2)}
                 </p>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
