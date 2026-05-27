@@ -610,6 +610,15 @@ export default function ProductDetail() {
                       </div>
                     </div>
                   )}
+                  {(p as any).olfactory_family && (
+                    <div className="bg-secondary rounded-xl p-2.5 flex items-center gap-2">
+                      <Droplets className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                      <div>
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Família olfativa</p>
+                        <p className="text-xs font-semibold capitalize">{(p as any).olfactory_family}</p>
+                      </div>
+                    </div>
+                  )}
                   {p.gender && (
                     <div className="bg-secondary rounded-xl p-2.5 flex items-center gap-2">
                       <UserIcon className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />

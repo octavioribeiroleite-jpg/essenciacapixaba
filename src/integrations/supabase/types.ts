@@ -29,6 +29,7 @@ export type Database = {
           longevity: string | null
           name: string
           occasions: string[] | null
+          olfactory_family: string | null
           sale_price_per_ml: number
           sillage: string | null
           total_ml: number
@@ -49,6 +50,7 @@ export type Database = {
           longevity?: string | null
           name: string
           occasions?: string[] | null
+          olfactory_family?: string | null
           sale_price_per_ml?: number
           sillage?: string | null
           total_ml?: number
@@ -69,6 +71,7 @@ export type Database = {
           longevity?: string | null
           name?: string
           occasions?: string[] | null
+          olfactory_family?: string | null
           sale_price_per_ml?: number
           sillage?: string | null
           total_ml?: number
