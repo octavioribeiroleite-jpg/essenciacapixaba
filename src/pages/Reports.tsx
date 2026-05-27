@@ -217,12 +217,30 @@ export default function Reports() {
     enabled: !!user,
   });
 
-  // Chart data: group by day
+  // Lucro realizado = lucro proporcional ao valor já recebido
+  const realizedProfit = (sale: any) => {
+    const price = Number(sale.sale_price);
+    const profit = price - Number(sale.cost_price);
+    if (price <= 0) return 0;
+    const status = sale.payment_status || "paid";
+    if (status === "paid") return profit;
+    const paid = Number(sale.amount_paid || 0);
+    return profit * (paid / price);
+  };
+  const forecastProfit = (sale: any) => {
+    const price = Number(sale.sale_price);
+    const profit = price - Number(sale.cost_price);
+    if (price <= 0) return 0;
+    const due = Number(sale.amount_due || 0);
+    return profit * (due / price);
+  };
+
+  // Chart data: group by day (lucro = somente recebido)
   const chartData = sales?.reduce((acc: any[], sale) => {
     const day = format(new Date(sale.created_at), "dd/MM");
     const existing = acc.find((d) => d.day === day);
     const revenue = Number(sale.sale_price);
-    const profit = revenue - Number(sale.cost_price);
+    const profit = realizedProfit(sale);
     if (existing) {
       existing.receita += revenue;
       existing.lucro += profit;
@@ -249,7 +267,7 @@ export default function Reports() {
     : [];
 
   const totalRevenue = sales?.reduce((s, sale) => s + Number(sale.sale_price), 0) ?? 0;
-  const totalProfit = sales?.reduce((s, sale) => s + Number(sale.sale_price) - Number(sale.cost_price), 0) ?? 0;
+  const totalProfit = sales?.reduce((s, sale) => s + realizedProfit(sale), 0) ?? 0;
   const totalMl = sales?.reduce((s, sale) => s + Number(sale.ml_sold), 0) ?? 0;
   const totalSales = sales?.length ?? 0;
 
@@ -765,6 +783,10 @@ export default function Reports() {
       {pendingSales && pendingSales.length > 0 && (() => {
         const pendingGroups = groupByOrder(pendingSales);
         const totalPending = pendingSales.reduce((s: number, sale: any) => s + Number(sale.amount_due || 0), 0);
+        const totalForecastProfit = pendingSales.reduce(
+          (s: number, sale: any) => s + forecastProfit(sale),
+          0,
+        );
         const overdueCount = pendingGroups.filter((g) => {
           const head = g[0];
           const due = head.due_date ? new Date(head.due_date + "T00:00:00") : null;
@@ -785,6 +807,9 @@ export default function Reports() {
                 <p className="text-[11px] text-white/80 mt-0.5">
                   {pendingGroups.length} pedido{pendingGroups.length !== 1 ? "s" : ""} pendente{pendingGroups.length !== 1 ? "s" : ""}
                   {overdueCount > 0 && ` · ${overdueCount} em atraso`}
+                </p>
+                <p className="text-[11px] text-white/90 mt-1 font-medium">
+                  Lucro previsto: R$ {totalForecastProfit.toFixed(2)}
                 </p>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">

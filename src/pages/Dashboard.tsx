@@ -52,11 +52,18 @@ export default function Dashboard() {
   const emptyStock = lowStock.filter((p) => Number(p.current_ml) === 0);
   const monthRevenue =
     salesThisMonth?.reduce((sum, s) => sum + Number(s.sale_price), 0) ?? 0;
+  // Lucro só é contado quando o pagamento é efetivamente recebido.
+  // Para vendas parciais (50/50), o lucro é proporcional ao valor já pago.
   const monthProfit =
-    salesThisMonth?.reduce(
-      (sum, s) => sum + (Number(s.sale_price) - Number(s.cost_price)),
-      0
-    ) ?? 0;
+    salesThisMonth?.reduce((sum, s: any) => {
+      const price = Number(s.sale_price);
+      const profit = price - Number(s.cost_price);
+      if (price <= 0) return sum;
+      const status = s.payment_status || "paid";
+      if (status === "paid") return sum + profit;
+      const paid = Number(s.amount_paid || 0);
+      return sum + profit * (paid / price);
+    }, 0) ?? 0;
   const recentSales = salesThisMonth?.slice(0, 5) ?? [];
   const frascoLabel = Number.isInteger(totalFrascos)
     ? `${totalFrascos}`
