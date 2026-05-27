@@ -23,7 +23,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { logMovement } from "@/lib/stockMovements";
 import { ML_PER_FRASCO } from "@/lib/frascos";
 import { MOVEMENT_LABEL, type MovementType } from "@/lib/stockMovements";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format, subDays, startOfMonth } from "date-fns";
@@ -59,6 +59,7 @@ export default function Reports() {
   const [editMovMl, setEditMovMl] = useState("");
   const [editMovNote, setEditMovNote] = useState("");
   const [editSale, setEditSale] = useState<any | null>(null);
+  const [editSaleGroup, setEditSaleGroup] = useState<any[]>([]);
   const [editSaleCustomer, setEditSaleCustomer] = useState("");
   const [editSaleMethod, setEditSaleMethod] = useState<"cash" | "card" | "split">("cash");
   const [editSaleStatus, setEditSaleStatus] = useState<"paid" | "pending">("paid");
@@ -67,21 +68,39 @@ export default function Reports() {
   const [chargePayload, setChargePayload] = useState<ChargePayload | null>(null);
   const [chargeOpen, setChargeOpen] = useState(false);
 
-  const openCharge = (sale: any) => {
-    const due = sale.due_date ? new Date(sale.due_date + "T00:00:00") : null;
+  const openCharge = (saleOrGroup: any | any[]) => {
+    const group = Array.isArray(saleOrGroup) ? saleOrGroup : [saleOrGroup];
+    const head = group[0];
+    const due = head.due_date ? new Date(head.due_date + "T00:00:00") : null;
     const overdue = due ? due < new Date(new Date().toDateString()) : false;
+    const totalQty = group.reduce(
+      (s, x) => s + Math.max(1, Math.round(Number(x.ml_sold) / ML_PER_FRASCO)),
+      0,
+    );
+    const total = group.reduce((s, x) => s + Number(x.sale_price), 0);
+    const paid = group.reduce((s, x) => s + Number(x.amount_paid || 0), 0);
+    const dueAmt = group.reduce((s, x) => s + Number(x.amount_due || 0), 0);
+    const productName =
+      group.length > 1
+        ? group
+            .map(
+              (x) =>
+                `${Math.max(1, Math.round(Number(x.ml_sold) / ML_PER_FRASCO))}x ${x.products?.name ?? "Perfume"}`,
+            )
+            .join(" + ")
+        : head.products?.name || "Perfume";
     setChargePayload({
-      customerName: sale.customer_name,
-      productName: sale.products?.name || "Perfume",
-      brand: sale.products?.brand || null,
-      quantity: Math.max(1, Math.round(Number(sale.ml_sold) / ML_PER_FRASCO)),
-      total: Number(sale.sale_price),
-      amountPaid: Number(sale.amount_paid || 0),
-      amountDue: Number(sale.amount_due || 0),
-      paymentMethod: sale.payment_method,
-      dueDate: sale.due_date,
-      firstDueDate: sale.first_due_date,
-      firstPaid: sale.first_paid,
+      customerName: head.customer_name,
+      productName,
+      brand: head.products?.brand || null,
+      quantity: totalQty,
+      total,
+      amountPaid: paid,
+      amountDue: dueAmt,
+      paymentMethod: head.payment_method,
+      dueDate: head.due_date,
+      firstDueDate: head.first_due_date,
+      firstPaid: head.first_paid,
       isOverdue: overdue,
     });
     setChargeOpen(true);
@@ -90,23 +109,31 @@ export default function Reports() {
   const [editSaleFirstDueDate, setEditSaleFirstDueDate] = useState("");
   const [editSalePrice, setEditSalePrice] = useState("");
 
-  const openEditSale = (sale: any) => {
-    setEditSale(sale);
-    setEditSaleCustomer(sale.customer_name || "");
-    setEditSaleMethod((sale.payment_method as any) || "cash");
-    setEditSaleStatus((sale.payment_status as any) || "paid");
-    setEditSaleDueDate(sale.due_date || "");
-    setEditSaleFirstPaid(sale.first_paid ?? true);
-    setEditSaleSecondPaid((sale.payment_status || "paid") === "paid");
-    setEditSaleFirstDueDate(sale.first_due_date || "");
-    setEditSalePrice(String(sale.sale_price));
+  const openEditSale = (saleOrGroup: any | any[]) => {
+    const group = Array.isArray(saleOrGroup) ? saleOrGroup : [saleOrGroup];
+    const head = group[0];
+    setEditSale(head);
+    setEditSaleGroup(group);
+    setEditSaleCustomer(head.customer_name || "");
+    setEditSaleMethod((head.payment_method as any) || "cash");
+    setEditSaleStatus((head.payment_status as any) || "paid");
+    setEditSaleDueDate(head.due_date || "");
+    setEditSaleFirstPaid(head.first_paid ?? true);
+    setEditSaleSecondPaid((head.payment_status || "paid") === "paid");
+    setEditSaleFirstDueDate(head.first_due_date || "");
+    setEditSalePrice(
+      String(group.reduce((s, x) => s + Number(x.sale_price), 0)),
+    );
   };
 
   const updateSale = useMutation({
     mutationFn: async () => {
       if (!editSale) throw new Error("Erro");
+      const group = editSaleGroup.length ? editSaleGroup : [editSale];
+      const isMulti = group.length > 1;
       const priceNum = parseFloat(editSalePrice);
       if (isNaN(priceNum) || priceNum < 0) throw new Error("Valor inválido");
+      const groupTotalOriginal = group.reduce((s, x) => s + Number(x.sale_price), 0);
       const isSplit = editSaleMethod === "split";
       let status: "paid" | "pending";
       let amountPaid: number;
@@ -130,21 +157,34 @@ export default function Reports() {
         secondDue = status === "pending" ? editSaleDueDate : null;
       }
       const amountDue = Math.round((priceNum - amountPaid) * 100) / 100;
-      const { error } = await supabase
-        .from("sales")
-        .update({
-          customer_name: editSaleCustomer.trim() || null,
-          payment_method: editSaleMethod,
-          payment_status: status,
-          amount_paid: amountPaid,
-          amount_due: amountDue,
-          sale_price: priceNum,
-          due_date: secondDue,
-          first_paid: firstPaid,
-          first_due_date: firstDue,
-        })
-        .eq("id", editSale.id);
-      if (error) throw error;
+      // Distribui pagamento entre os itens proporcionalmente
+      for (const row of group) {
+        const ratio = groupTotalOriginal > 0
+          ? Number(row.sale_price) / groupTotalOriginal
+          : 1 / group.length;
+        const itemSalePrice = isMulti
+          ? Number(row.sale_price) // não altera preço por item no modo grupo
+          : priceNum;
+        const itemPaid = isMulti
+          ? Math.round(amountPaid * ratio * 100) / 100
+          : amountPaid;
+        const itemDue = Math.round((itemSalePrice - itemPaid) * 100) / 100;
+        const { error } = await supabase
+          .from("sales")
+          .update({
+            customer_name: editSaleCustomer.trim() || null,
+            payment_method: editSaleMethod,
+            payment_status: status,
+            amount_paid: itemPaid,
+            amount_due: itemDue,
+            sale_price: itemSalePrice,
+            due_date: secondDue,
+            first_paid: firstPaid,
+            first_due_date: firstDue,
+          })
+          .eq("id", row.id);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["report-sales"] });
@@ -152,6 +192,7 @@ export default function Reports() {
       queryClient.invalidateQueries({ queryKey: ["sales-month"] });
       toast.success("Venda atualizada!");
       setEditSale(null);
+      setEditSaleGroup([]);
     },
     onError: (err: any) => toast.error(err.message),
   });
