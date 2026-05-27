@@ -65,8 +65,7 @@ Deno.serve(async (req) => {
       if (Number(amountPaid) > 0) linhas.push(`✅ Já pago: ${ctx.valor_pago}`);
       linhas.push(`📌 Pendente: ${ctx.valor_pendente}`);
       if (paymentMethod === "split") {
-        const total = Number(total ?? 0);
-        const metade = (Number(body.total || 0) / 2).toFixed(2);
+        const metade = (Number(total || 0) / 2).toFixed(2);
         linhas.push("");
         linhas.push("📆 Parcelamento 50% / 50%:");
         linhas.push(
