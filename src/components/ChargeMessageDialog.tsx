@@ -5,6 +5,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Copy, Loader2, Sparkles, MessageCircle, RefreshCw } from "lucide-react";
+import { FileText, Wallet } from "lucide-react";
+import { generateReceiptPdf, type ReceiptItem } from "@/lib/receiptPdf";
+import { PIX_KEY } from "@/lib/pix";
 
 export type ChargePayload = {
   customerName?: string | null;
@@ -19,6 +22,10 @@ export type ChargePayload = {
   firstDueDate?: string | null;
   firstPaid?: boolean;
   isOverdue?: boolean;
+  /** Itens detalhados para o PDF (com imagens). Se ausente, PDF usa só o resumo. */
+  items?: ReceiptItem[];
+  /** ID do pedido/venda para referência no PDF */
+  orderRef?: string;
 };
 
 interface Props {
@@ -30,6 +37,7 @@ interface Props {
 export function ChargeMessageDialog({ open, onOpenChange, payload }: Props) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const generate = async () => {
     if (!payload) return;
@@ -76,12 +84,57 @@ export function ChargeMessageDialog({ open, onOpenChange, payload }: Props) {
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
+  const copyPix = async () => {
+    try {
+      await navigator.clipboard.writeText(PIX_KEY);
+      toast.success("Chave Pix copiada!");
+    } catch {
+      toast.error("Não foi possível copiar");
+    }
+  };
+
+  const downloadPdf = async () => {
+    if (!payload) return;
+    setPdfLoading(true);
+    try {
+      const items: ReceiptItem[] =
+        payload.items && payload.items.length > 0
+          ? payload.items
+          : [
+              {
+                name: payload.productName,
+                brand: payload.brand,
+                qty: payload.quantity,
+                total: payload.total,
+                imageUrl: null,
+              },
+            ];
+      await generateReceiptPdf({
+        customerName: payload.customerName,
+        items,
+        total: payload.total,
+        amountPaid: payload.amountPaid,
+        amountDue: payload.amountDue,
+        paymentMethod: payload.paymentMethod,
+        dueDate: payload.dueDate,
+        firstDueDate: payload.firstDueDate,
+        firstPaid: payload.firstPaid,
+        orderRef: payload.orderRef,
+      });
+      toast.success("PDF baixado!");
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao gerar PDF");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" /> Mensagem de cobrança
+            <Sparkles className="w-4 h-4 text-primary" /> Cobrança & Recibo
           </DialogTitle>
         </DialogHeader>
 
@@ -106,6 +159,24 @@ export function ChargeMessageDialog({ open, onOpenChange, payload }: Props) {
               </Button>
               <Button onClick={openWhatsApp} disabled={!message} className="gap-1">
                 <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border">
+              <Button variant="outline" onClick={copyPix} className="gap-1">
+                <Wallet className="w-3.5 h-3.5 text-primary" /> Copiar Pix
+              </Button>
+              <Button
+                variant="outline"
+                onClick={downloadPdf}
+                disabled={pdfLoading}
+                className="gap-1 border-primary/40"
+              >
+                {pdfLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <FileText className="w-3.5 h-3.5 text-primary" />
+                )}
+                Baixar PDF
               </Button>
             </div>
           </div>

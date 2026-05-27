@@ -291,6 +291,14 @@ export default function Sales() {
           dueDate,
           firstDueDate: isSplit ? (firstPaid ? null : firstDueDate) : null,
           firstPaid: isSplit ? firstPaid : true,
+          items: cart.map((c) => ({
+            name: c.product.name,
+            brand: c.product.brand,
+            qty: c.qty,
+            total: c.qty * c.unitPrice,
+            imageUrl: c.product.image_url,
+          })),
+          orderRef: (res as any)?.orderId,
         });
         setChargeOpen(true);
       }

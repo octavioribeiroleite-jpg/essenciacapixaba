@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   BarChart3, Trash2, Pencil, ArrowUp, Settings2,
   TrendingUp, DollarSign, Droplets, ShoppingBag, Trophy, Package,
-  Clock, CheckCircle2, User, Banknote, CreditCard, SplitSquareHorizontal, Sparkles,
+  Clock, CheckCircle2, User, Banknote, CreditCard, SplitSquareHorizontal, Sparkles, FileText,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -102,6 +102,17 @@ export default function Reports() {
       firstDueDate: head.first_due_date,
       firstPaid: head.first_paid,
       isOverdue: overdue,
+      items: group.map((x: any) => {
+        const qty = Math.max(1, Math.round(Number(x.ml_sold) / ML_PER_FRASCO));
+        return {
+          name: x.products?.name ?? "Perfume",
+          brand: x.products?.brand ?? null,
+          qty,
+          total: Number(x.sale_price),
+          imageUrl: x.products?.image_url ?? null,
+        };
+      }),
+      orderRef: head.order_id || head.id,
     });
     setChargeOpen(true);
   };
@@ -734,6 +745,15 @@ export default function Reports() {
                           className="w-8 h-8 rounded-lg flex items-center justify-center text-amber-600 hover:bg-amber-50 active:bg-amber-100 transition-colors"
                         >
                           <Sparkles className="w-4 h-4" />
+                        </button>
+                      )}
+                      {!hasPending && (
+                        <button
+                          onClick={() => openCharge(group)}
+                          title="Recibo / PDF"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 active:bg-primary/20 transition-colors"
+                        >
+                          <FileText className="w-4 h-4" />
                         </button>
                       )}
                       <button
