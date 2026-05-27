@@ -258,9 +258,36 @@ export default function Reports() {
         saleStatusFilter === "all" ? true : (s.payment_status || "paid") === saleStatusFilter,
       )
     : [];
-  const recentSales = [...filteredSales].reverse().slice(0, 20);
-  const paidCount = sales?.filter((s: any) => (s.payment_status || "paid") === "paid").length ?? 0;
-  const pendingCount = sales?.filter((s: any) => s.payment_status === "pending").length ?? 0;
+
+  // Agrupa vendas por order_id (vendas sem order_id são tratadas como pedidos únicos)
+  const groupByOrder = (rows: any[]): any[][] => {
+    const map = new Map<string, any[]>();
+    for (const s of rows) {
+      const key = s.order_id || s.id;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(s);
+    }
+    return Array.from(map.values());
+  };
+  const recentGroups = useMemo(() => {
+    const groups = groupByOrder(filteredSales);
+    groups.sort(
+      (a, b) =>
+        new Date(b[0].created_at).getTime() - new Date(a[0].created_at).getTime(),
+    );
+    return groups.slice(0, 20);
+  }, [filteredSales]);
+  const allGroupsCount = sales ? groupByOrder(sales).length : 0;
+  const paidCount = sales
+    ? groupByOrder(sales).filter((g) =>
+        g.every((s: any) => (s.payment_status || "paid") === "paid"),
+      ).length
+    : 0;
+  const pendingCount = sales
+    ? groupByOrder(sales).filter((g) =>
+        g.some((s: any) => s.payment_status === "pending"),
+      ).length
+    : 0;
 
   const { data: pendingSales } = useQuery({
     queryKey: ["pending-sales"],
