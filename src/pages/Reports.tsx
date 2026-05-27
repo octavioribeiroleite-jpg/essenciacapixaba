@@ -277,16 +277,20 @@ export default function Reports() {
   });
 
   const markPaid = useMutation({
-    mutationFn: async (sale: any) => {
-      const { error } = await supabase
-        .from("sales")
-        .update({
-          payment_status: "paid",
-          amount_paid: Number(sale.sale_price),
-          amount_due: 0,
-        })
-        .eq("id", sale.id);
-      if (error) throw error;
+    mutationFn: async (saleOrGroup: any | any[]) => {
+      const group = Array.isArray(saleOrGroup) ? saleOrGroup : [saleOrGroup];
+      for (const sale of group) {
+        const { error } = await supabase
+          .from("sales")
+          .update({
+            payment_status: "paid",
+            amount_paid: Number(sale.sale_price),
+            amount_due: 0,
+            first_paid: true,
+          })
+          .eq("id", sale.id);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-sales"] });
