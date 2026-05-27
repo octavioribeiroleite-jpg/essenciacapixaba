@@ -326,15 +326,17 @@ export default function ProductDetail() {
   const openDetails = () => {
     if (!product) return;
     const p: any = product;
-    const notes = (p.fragrance_notes ?? {}) as { top?: string[]; heart?: string[]; base?: string[] };
+    const rawNotes = (p.fragrance_notes ?? {}) as { top?: unknown; heart?: unknown; base?: unknown };
+    const toStr = (v: unknown) =>
+      Array.isArray(v) ? v.join(", ") : typeof v === "string" ? v : "";
     setDDescription(p.description ?? "");
     setDConcentration(p.concentration ?? "");
     setDGender(p.gender ?? "");
     setDLongevity(p.longevity ?? "");
     setDSillage(p.sillage ?? "");
-    setDTop((notes.top ?? []).join(", "));
-    setDHeart((notes.heart ?? []).join(", "));
-    setDBase((notes.base ?? []).join(", "));
+    setDTop(toStr(rawNotes.top));
+    setDHeart(toStr(rawNotes.heart));
+    setDBase(toStr(rawNotes.base));
     setDOccasions(Array.isArray(p.occasions) ? p.occasions : []);
     setDetailsOpen(true);
   };
@@ -556,9 +558,18 @@ export default function ProductDetail() {
       {/* Perfume details cards */}
       {(() => {
         const p: any = product;
-        const notes = (p?.fragrance_notes ?? null) as
-          | { top?: string[]; heart?: string[]; base?: string[] }
+        const toArr = (v: unknown): string[] => {
+          if (Array.isArray(v)) return v.filter(Boolean).map(String);
+          if (typeof v === "string" && v.trim())
+            return v.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+          return [];
+        };
+        const rawNotes = (p?.fragrance_notes ?? null) as
+          | { top?: unknown; heart?: unknown; base?: unknown }
           | null;
+        const notes = rawNotes
+          ? { top: toArr(rawNotes.top), heart: toArr(rawNotes.heart), base: toArr(rawNotes.base) }
+          : null;
         const hasNotes =
           !!notes &&
           ((notes.top?.length ?? 0) + (notes.heart?.length ?? 0) + (notes.base?.length ?? 0) > 0);

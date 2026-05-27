@@ -263,8 +263,13 @@ export default function Products() {
                 </p>
 
                 {(() => {
-                  const notes = product.fragrance_notes as { top?: string[] } | null;
-                  const topNote = notes?.top?.[0];
+                  const notes = product.fragrance_notes as { top?: unknown } | null;
+                  const rawTop = notes?.top;
+                  const topNote = Array.isArray(rawTop)
+                    ? (rawTop[0] as string | undefined)
+                    : typeof rawTop === "string"
+                      ? rawTop.split(/[,;]/)[0]?.trim()
+                      : undefined;
                   return topNote ? (
                     <p className="text-[10px] text-blue-500 truncate">🌿 {topNote}</p>
                   ) : null;
