@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   BarChart3, Trash2, Pencil, ArrowUp, Settings2,
   TrendingUp, DollarSign, Droplets, ShoppingBag, Trophy, Package,
-  Clock, CheckCircle2, User, Banknote, CreditCard, SplitSquareHorizontal, Sparkles,
+  Clock, CheckCircle2, User, Banknote, CreditCard, SplitSquareHorizontal, Sparkles, FileText,
 } from "lucide-react";
 import {
   AlertDialog,
