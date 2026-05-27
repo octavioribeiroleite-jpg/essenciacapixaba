@@ -137,6 +137,13 @@ export type Database = {
             foreignKeyName: "sales_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "catalog_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
@@ -180,10 +187,66 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      catalog_products: {
+        Row: {
+          brand: string | null
+          concentration: string | null
+          current_ml: number | null
+          description: string | null
+          fragrance_notes: Json | null
+          gender: string | null
+          id: string | null
+          image_url: string | null
+          longevity: string | null
+          name: string | null
+          occasions: string[] | null
+          olfactory_family: string | null
+          sale_price_per_ml: number | null
+          sillage: string | null
+          total_ml: number | null
+        }
+        Insert: {
+          brand?: string | null
+          concentration?: string | null
+          current_ml?: number | null
+          description?: string | null
+          fragrance_notes?: Json | null
+          gender?: string | null
+          id?: string | null
+          image_url?: string | null
+          longevity?: string | null
+          name?: string | null
+          occasions?: string[] | null
+          olfactory_family?: string | null
+          sale_price_per_ml?: number | null
+          sillage?: string | null
+          total_ml?: number | null
+        }
+        Update: {
+          brand?: string | null
+          concentration?: string | null
+          current_ml?: number | null
+          description?: string | null
+          fragrance_notes?: Json | null
+          gender?: string | null
+          id?: string | null
+          image_url?: string | null
+          longevity?: string | null
+          name?: string | null
+          occasions?: string[] | null
+          olfactory_family?: string | null
+          sale_price_per_ml?: number | null
+          sillage?: string | null
+          total_ml?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      deduct_stock: {
+        Args: { p_ml: number; p_product_id: string; p_user_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       movement_type:
