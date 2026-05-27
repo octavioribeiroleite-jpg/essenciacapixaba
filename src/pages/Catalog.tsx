@@ -191,7 +191,7 @@ export default function Catalog() {
   const isInCompare = (p: Product) => compareList.some((x) => x.id === p.id);
 
   const stockBadge = (fr: number) => {
-    if (fr === 0) return { label: "Esgotado", cls: "bg-red-500 text-white" };
+    if (fr === 0) return { label: "Sob encomenda", cls: "bg-amber-500 text-white" };
     if (fr <= 2) return { label: "Últimas", cls: "bg-primary text-primary-foreground" };
     return { label: "Disponível", cls: "bg-green-500 text-white" };
   };
