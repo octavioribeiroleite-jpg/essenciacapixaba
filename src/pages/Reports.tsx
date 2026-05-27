@@ -747,6 +747,15 @@ export default function Reports() {
                           <Sparkles className="w-4 h-4" />
                         </button>
                       )}
+                      {!hasPending && (
+                        <button
+                          onClick={() => openCharge(group)}
+                          title="Recibo / PDF"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 active:bg-primary/20 transition-colors"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => openEditSale(group)}
                         title="Editar"
