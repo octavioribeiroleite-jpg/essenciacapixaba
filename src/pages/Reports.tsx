@@ -67,6 +67,7 @@ export default function Reports() {
   const [editSaleFirstPaid, setEditSaleFirstPaid] = useState(true);
   const [chargePayload, setChargePayload] = useState<ChargePayload | null>(null);
   const [chargeOpen, setChargeOpen] = useState(false);
+  const [detailsGroup, setDetailsGroup] = useState<any[] | null>(null);
 
   const openCharge = (saleOrGroup: any | any[]) => {
     const group = Array.isArray(saleOrGroup) ? saleOrGroup : [saleOrGroup];
@@ -566,6 +567,155 @@ export default function Reports() {
         })}
       </div>
 
+      {/* Pending payments — placed right after the stat cards */}
+      {pendingSales && pendingSales.length > 0 && (() => {
+        const pendingGroups = groupByOrder(pendingSales);
+        const totalPending = pendingSales.reduce((s: number, sale: any) => s + Number(sale.amount_due || 0), 0);
+        const totalForecastProfit = pendingSales.reduce(
+          (s: number, sale: any) => s + forecastProfit(sale),
+          0,
+        );
+        const overdueCount = pendingGroups.filter((g) => {
+          const head = g[0];
+          const due = head.due_date ? new Date(head.due_date + "T00:00:00") : null;
+          return due && due < new Date(new Date().toDateString());
+        }).length;
+        return (
+        <div className="space-y-3">
+          {/* Total pendente card */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 p-4 text-white shadow-lg">
+            <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10" />
+            <div className="absolute -right-2 -bottom-8 w-20 h-20 rounded-full bg-white/5" />
+            <div className="relative flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/90">
+                  <Clock className="w-3 h-3" /> Total a receber
+                </div>
+                <p className="text-2xl font-bold tabular-nums leading-tight mt-1">R$ {totalPending.toFixed(2)}</p>
+                <p className="text-[11px] text-white/80 mt-0.5">
+                  {pendingGroups.length} pedido{pendingGroups.length !== 1 ? "s" : ""} pendente{pendingGroups.length !== 1 ? "s" : ""}
+                  {overdueCount > 0 && ` · ${overdueCount} em atraso`}
+                </p>
+                <p className="text-[11px] text-white/90 mt-1 font-medium">
+                  Lucro previsto: R$ {totalForecastProfit.toFixed(2)}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+                <DollarSign className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+
+        <div className="bg-card rounded-2xl border border-amber-300/60 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-600" />
+            <h2 className="text-sm font-semibold text-foreground">Pagamentos pendentes</h2>
+            <span className="ml-auto text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+              {pendingGroups.length}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {pendingGroups.map((group: any[]) => {
+              const head = group[0];
+              const isMulti = group.length > 1;
+              const groupDue = group.reduce((s, x) => s + Number(x.amount_due || 0), 0);
+              const groupPaid = group.reduce((s, x) => s + Number(x.amount_paid || 0), 0);
+              const due = head.due_date ? new Date(head.due_date + "T00:00:00") : null;
+              const overdue = due && due < new Date(new Date().toDateString());
+              return (
+                <div
+                  key={head.order_id || head.id}
+                  className={`rounded-xl border p-3 space-y-2.5 transition-colors ${
+                    overdue
+                      ? "border-red-200 bg-red-50/40"
+                      : "border-amber-200/70 bg-amber-50/30 hover:bg-amber-50/60"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setDetailsGroup(group)}
+                    className="w-full text-left flex items-start gap-3"
+                  >
+                    <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
+                      {head.products?.image_url ? (
+                        <img src={head.products.image_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-amber-100">
+                          <Clock className="w-4 h-4 text-amber-600" />
+                        </div>
+                      )}
+                      {isMulti && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shadow">
+                          {group.length}
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {head.customer_name || "Cliente"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {isMulti
+                          ? group
+                              .map((x) => x.products?.name ?? "?")
+                              .join(" + ")
+                          : head.products?.name || "?"}
+                      </p>
+                      {due && (
+                        <p className={`text-[11px] mt-0.5 font-medium ${overdue ? "text-red-600" : "text-muted-foreground"}`}>
+                          {overdue ? "Atrasado · " : "Vence "}
+                          {format(due, "dd/MM/yyyy", { locale: ptBR })}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Resta</p>
+                      <p className="text-base font-bold text-amber-700 tabular-nums leading-tight">
+                        R$ {groupDue.toFixed(2)}
+                      </p>
+                      {groupPaid > 0 && (
+                        <p className="text-[10px] text-muted-foreground tabular-nums">
+                          Pago R$ {groupPaid.toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                  {/* Bottom row: actions */}
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs gap-1 flex-1 min-w-0"
+                      onClick={() => markPaid.mutate(group)}
+                      disabled={markPaid.isPending}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Pagou
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-8 text-xs gap-1 flex-1 min-w-0"
+                      onClick={() => openCharge(group)}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Cobrança
+                    </Button>
+                    <button
+                      onClick={() => openEditSale(group)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0 border border-border/60"
+                      aria-label="Editar venda"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        </div>
+        );
+      })()}
+
       {/* Chart */}
       {chartData.length > 0 && (
         <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
@@ -687,7 +837,11 @@ export default function Reports() {
                   key={head.order_id || head.id}
                   className="p-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setDetailsGroup(group)}
+                    className="w-full text-left flex items-center gap-2.5 min-w-0"
+                  >
                     <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
                       {head.products?.image_url ? (
                         <img src={head.products.image_url} alt="" className="w-full h-full object-cover" />
@@ -729,7 +883,7 @@ export default function Reports() {
                         </p>
                       )}
                     </div>
-                  </div>
+                  </button>
                   <div className="flex items-center justify-between gap-2 mt-2 min-w-0">
                     <div className="flex items-center gap-1 flex-wrap min-w-0">
                       {head.payment_method === "cash" && <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><Banknote className="w-2.5 h-2.5" />Dinheiro</span>}
@@ -800,151 +954,6 @@ export default function Reports() {
       </div>
 
       {/* Stock entries */}
-      {pendingSales && pendingSales.length > 0 && (() => {
-        const pendingGroups = groupByOrder(pendingSales);
-        const totalPending = pendingSales.reduce((s: number, sale: any) => s + Number(sale.amount_due || 0), 0);
-        const totalForecastProfit = pendingSales.reduce(
-          (s: number, sale: any) => s + forecastProfit(sale),
-          0,
-        );
-        const overdueCount = pendingGroups.filter((g) => {
-          const head = g[0];
-          const due = head.due_date ? new Date(head.due_date + "T00:00:00") : null;
-          return due && due < new Date(new Date().toDateString());
-        }).length;
-        return (
-        <div className="space-y-3">
-          {/* Total pendente card */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 p-4 text-white shadow-lg">
-            <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10" />
-            <div className="absolute -right-2 -bottom-8 w-20 h-20 rounded-full bg-white/5" />
-            <div className="relative flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/90">
-                  <Clock className="w-3 h-3" /> Total a receber
-                </div>
-                <p className="text-2xl font-bold tabular-nums leading-tight mt-1">R$ {totalPending.toFixed(2)}</p>
-                <p className="text-[11px] text-white/80 mt-0.5">
-                  {pendingGroups.length} pedido{pendingGroups.length !== 1 ? "s" : ""} pendente{pendingGroups.length !== 1 ? "s" : ""}
-                  {overdueCount > 0 && ` · ${overdueCount} em atraso`}
-                </p>
-                <p className="text-[11px] text-white/90 mt-1 font-medium">
-                  Lucro previsto: R$ {totalForecastProfit.toFixed(2)}
-                </p>
-              </div>
-              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-                <DollarSign className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </div>
-
-        <div className="bg-card rounded-2xl border border-amber-300/60 p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-amber-600" />
-            <h2 className="text-sm font-semibold text-foreground">Pagamentos pendentes</h2>
-            <span className="ml-auto text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-              {pendingGroups.length}
-            </span>
-          </div>
-          <div className="space-y-2">
-            {pendingGroups.map((group: any[]) => {
-              const head = group[0];
-              const isMulti = group.length > 1;
-              const groupDue = group.reduce((s, x) => s + Number(x.amount_due || 0), 0);
-              const groupPaid = group.reduce((s, x) => s + Number(x.amount_paid || 0), 0);
-              const due = head.due_date ? new Date(head.due_date + "T00:00:00") : null;
-              const overdue = due && due < new Date(new Date().toDateString());
-              return (
-                <div
-                  key={head.order_id || head.id}
-                  className={`rounded-xl border p-3 space-y-2.5 transition-colors ${
-                    overdue
-                      ? "border-red-200 bg-red-50/40"
-                      : "border-amber-200/70 bg-amber-50/30 hover:bg-amber-50/60"
-                  }`}
-                >
-                  {/* Top row: image + info + amount */}
-                  <div className="flex items-start gap-3">
-                    <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
-                      {head.products?.image_url ? (
-                        <img src={head.products.image_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-amber-100">
-                          <Clock className="w-4 h-4 text-amber-600" />
-                        </div>
-                      )}
-                      {isMulti && (
-                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shadow">
-                          {group.length}
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-foreground truncate">
-                        {head.customer_name || "Cliente"}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground truncate">
-                        {isMulti
-                          ? group
-                              .map((x) => x.products?.name ?? "?")
-                              .join(" + ")
-                          : head.products?.name || "?"}
-                      </p>
-                      {due && (
-                        <p className={`text-[11px] mt-0.5 font-medium ${overdue ? "text-red-600" : "text-muted-foreground"}`}>
-                          {overdue ? "Atrasado · " : "Vence "}
-                          {format(due, "dd/MM/yyyy", { locale: ptBR })}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Resta</p>
-                      <p className="text-base font-bold text-amber-700 tabular-nums leading-tight">
-                        R$ {groupDue.toFixed(2)}
-                      </p>
-                      {groupPaid > 0 && (
-                        <p className="text-[10px] text-muted-foreground tabular-nums">
-                          Pago R$ {groupPaid.toFixed(2)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  {/* Bottom row: actions */}
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 text-xs gap-1 flex-1 min-w-0"
-                      onClick={() => markPaid.mutate(group)}
-                      disabled={markPaid.isPending}
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Pagou
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="h-8 text-xs gap-1 flex-1 min-w-0"
-                      onClick={() => openCharge(group)}
-                    >
-                      <Sparkles className="w-3.5 h-3.5" /> Cobrança
-                    </Button>
-                    <button
-                      onClick={() => openEditSale(group)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0 border border-border/60"
-                      aria-label="Editar venda"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        </div>
-        );
-      })()}
-
       <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Package className="w-4 h-4 text-primary" />
@@ -1199,6 +1208,173 @@ export default function Reports() {
       </Dialog>
 
       <ChargeMessageDialog open={chargeOpen} onOpenChange={setChargeOpen} payload={chargePayload} />
+
+      {/* Sale details dialog */}
+      <Dialog open={!!detailsGroup} onOpenChange={(o) => !o && setDetailsGroup(null)}>
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes da venda</DialogTitle>
+          </DialogHeader>
+          {detailsGroup && (() => {
+            const head = detailsGroup[0];
+            const total = detailsGroup.reduce((s, x) => s + Number(x.sale_price), 0);
+            const paid = detailsGroup.reduce((s, x) => s + Number(x.amount_paid || 0), 0);
+            const dueAmt = detailsGroup.reduce((s, x) => s + Number(x.amount_due || 0), 0);
+            const cost = detailsGroup.reduce((s, x) => s + Number(x.cost_price), 0);
+            const profit = total - cost;
+            const status = head.payment_status || "paid";
+            const method = head.payment_method || "cash";
+            const methodLabel =
+              method === "cash" ? "Dinheiro" : method === "card" ? "Cartão" : "50/50";
+            return (
+              <div className="space-y-4 text-sm">
+                {/* Customer + date */}
+                <div className="rounded-xl bg-muted/40 p-3 space-y-1">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    Cliente
+                  </p>
+                  <p className="font-semibold text-foreground flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-muted-foreground" />
+                    {head.customer_name || "—"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {format(new Date(head.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                </div>
+
+                {/* Items */}
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    {detailsGroup.length > 1 ? `Itens (${detailsGroup.length})` : "Item"}
+                  </p>
+                  {detailsGroup.map((s: any) => {
+                    const qty = Math.max(1, Math.round(Number(s.ml_sold) / ML_PER_FRASCO));
+                    return (
+                      <div key={s.id} className="flex items-center gap-2.5 p-2 rounded-xl bg-muted/30">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted shrink-0 border border-border/60">
+                          {s.products?.image_url ? (
+                            <img src={s.products.image_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-primary/10 text-xs font-bold text-primary">
+                              {s.products?.name?.charAt(0) ?? "?"}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {s.products?.name || "?"}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {s.products?.brand || "—"} · {qty} frasco(s)
+                          </p>
+                        </div>
+                        <p className="text-sm font-semibold text-emerald-600 tabular-nums shrink-0">
+                          R$ {Number(s.sale_price).toFixed(2)}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Payment */}
+                <div className="rounded-xl bg-muted/40 p-3 space-y-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    Pagamento
+                  </p>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Forma</span>
+                    <span className="font-medium text-foreground">{methodLabel}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Status</span>
+                    <span className={`font-semibold ${status === "paid" ? "text-emerald-600" : "text-amber-700"}`}>
+                      {status === "paid" ? "Pago" : "Pendente"}
+                    </span>
+                  </div>
+                  {method === "split" && (
+                    <>
+                      <div className="border-t border-border/60 pt-2 space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">1ª parcela</span>
+                          <span className={`font-medium ${head.first_paid ? "text-emerald-600" : "text-amber-700"}`}>
+                            {head.first_paid ? "Paga" : "Pendente"}
+                            {!head.first_paid && head.first_due_date &&
+                              ` · vence ${format(new Date(head.first_due_date + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}`}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">2ª parcela</span>
+                          <span className={`font-medium ${status === "paid" ? "text-emerald-600" : "text-amber-700"}`}>
+                            {status === "paid" ? "Paga" : "Pendente"}
+                            {status !== "paid" && head.due_date &&
+                              ` · vence ${format(new Date(head.due_date + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}`}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {method !== "split" && status === "pending" && head.due_date && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Vencimento</span>
+                      <span className="font-medium text-foreground">
+                        {format(new Date(head.due_date + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Totals */}
+                <div className="rounded-xl bg-muted/40 p-3 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="font-semibold text-foreground tabular-nums">R$ {total.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Pago</span>
+                    <span className="font-semibold text-emerald-600 tabular-nums">R$ {paid.toFixed(2)}</span>
+                  </div>
+                  {dueAmt > 0 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">A receber</span>
+                      <span className="font-semibold text-amber-700 tabular-nums">R$ {dueAmt.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-xs pt-1.5 border-t border-border/60">
+                    <span className="text-muted-foreground">Lucro bruto</span>
+                    <span className="font-semibold text-violet-600 tabular-nums">R$ {profit.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    className="rounded-xl gap-1.5"
+                    onClick={() => {
+                      const g = detailsGroup;
+                      setDetailsGroup(null);
+                      openCharge(g);
+                    }}
+                  >
+                    <FileText className="w-4 h-4" /> Recibo
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="rounded-xl gap-1.5"
+                    onClick={() => {
+                      const g = detailsGroup;
+                      setDetailsGroup(null);
+                      openEditSale(g);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" /> Editar
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
