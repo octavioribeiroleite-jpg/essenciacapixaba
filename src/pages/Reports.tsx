@@ -581,36 +581,59 @@ export default function Reports() {
           return due && due < new Date(new Date().toDateString());
         }).length;
         return (
-        <div className="space-y-3">
-          {/* Total pendente card */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 p-4 text-white shadow-lg">
-            <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10" />
-            <div className="absolute -right-2 -bottom-8 w-20 h-20 rounded-full bg-white/5" />
-            <div className="relative flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/90">
-                  <Clock className="w-3 h-3" /> Total a receber
+        <div className="space-y-4">
+          {/* Painel financeiro — Total a receber */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 p-6 text-white shadow-xl">
+            <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10" />
+            <div className="absolute -right-4 -bottom-12 w-32 h-32 rounded-full bg-white/5" />
+            <div className="relative space-y-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-white/90">
+                    <Clock className="w-3.5 h-3.5" /> Total a receber
+                  </div>
+                  <p className="text-4xl font-extrabold tabular-nums leading-none mt-2">
+                    R$ {totalPending.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-white/85 mt-2 font-medium">
+                    {pendingGroups.length} pedido{pendingGroups.length !== 1 ? "s" : ""} pendente{pendingGroups.length !== 1 ? "s" : ""}
+                    {overdueCount > 0 && ` · ${overdueCount} em atraso`}
+                  </p>
                 </div>
-                <p className="text-2xl font-bold tabular-nums leading-tight mt-1">R$ {totalPending.toFixed(2)}</p>
-                <p className="text-[11px] text-white/80 mt-0.5">
-                  {pendingGroups.length} pedido{pendingGroups.length !== 1 ? "s" : ""} pendente{pendingGroups.length !== 1 ? "s" : ""}
-                  {overdueCount > 0 && ` · ${overdueCount} em atraso`}
-                </p>
-                <p className="text-[11px] text-white/90 mt-1 font-medium">
-                  Lucro previsto: R$ {totalForecastProfit.toFixed(2)}
-                </p>
+                <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 shadow-md">
+                  <DollarSign className="w-7 h-7 text-white" />
+                </div>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-                <DollarSign className="w-6 h-6 text-white" />
+
+              {/* Sub-métricas */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-white/15 backdrop-blur-sm p-3 border border-white/20">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-white/85">
+                    Lucro previsto
+                  </p>
+                  <p className="text-lg font-bold tabular-nums leading-tight mt-1">
+                    R$ {totalForecastProfit.toFixed(2)}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white/15 backdrop-blur-sm p-3 border border-white/20">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-white/85">
+                    Em atraso
+                  </p>
+                  <p className="text-lg font-bold tabular-nums leading-tight mt-1">
+                    {overdueCount} pedido{overdueCount !== 1 ? "s" : ""}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
-        <div className="bg-card rounded-2xl border border-amber-300/60 p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-amber-600" />
-            <h2 className="text-sm font-semibold text-foreground">Pagamentos pendentes</h2>
-            <span className="ml-auto text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+        <div className="bg-card rounded-2xl border border-amber-300/60 p-4 space-y-3 shadow-sm">
+          <div className="flex items-center gap-2 pb-2 border-b border-amber-200/60">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
+              <Clock className="w-4 h-4 text-amber-700" />
+            </div>
+            <h2 className="text-base font-bold text-foreground">Pagamentos pendentes</h2>
+            <span className="ml-auto text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full">
               {pendingGroups.length}
             </span>
           </div>
