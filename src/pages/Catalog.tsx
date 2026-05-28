@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ML_PER_FRASCO, perFrasco, formatFrascos, priceFrascoRounded } from "@/lib/frascos";
+import FragranceDiscovery from "@/components/FragranceDiscovery";
 
 const publicSupabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -326,6 +327,10 @@ export default function Catalog() {
       </header>
 
       <main className={`max-w-5xl mx-auto px-4 py-5 space-y-4 ${compareList.length > 0 ? "pb-24" : ""}`}>
+        <FragranceDiscovery
+          products={products as any}
+          onSelectProduct={(p) => setSelected(p as any)}
+        />
         {/* Busca + filtros + ordenação */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
