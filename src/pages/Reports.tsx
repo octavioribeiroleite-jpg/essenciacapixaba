@@ -1208,6 +1208,173 @@ export default function Reports() {
       </Dialog>
 
       <ChargeMessageDialog open={chargeOpen} onOpenChange={setChargeOpen} payload={chargePayload} />
+
+      {/* Sale details dialog */}
+      <Dialog open={!!detailsGroup} onOpenChange={(o) => !o && setDetailsGroup(null)}>
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes da venda</DialogTitle>
+          </DialogHeader>
+          {detailsGroup && (() => {
+            const head = detailsGroup[0];
+            const total = detailsGroup.reduce((s, x) => s + Number(x.sale_price), 0);
+            const paid = detailsGroup.reduce((s, x) => s + Number(x.amount_paid || 0), 0);
+            const dueAmt = detailsGroup.reduce((s, x) => s + Number(x.amount_due || 0), 0);
+            const cost = detailsGroup.reduce((s, x) => s + Number(x.cost_price), 0);
+            const profit = total - cost;
+            const status = head.payment_status || "paid";
+            const method = head.payment_method || "cash";
+            const methodLabel =
+              method === "cash" ? "Dinheiro" : method === "card" ? "Cartão" : "50/50";
+            return (
+              <div className="space-y-4 text-sm">
+                {/* Customer + date */}
+                <div className="rounded-xl bg-muted/40 p-3 space-y-1">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    Cliente
+                  </p>
+                  <p className="font-semibold text-foreground flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-muted-foreground" />
+                    {head.customer_name || "—"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {format(new Date(head.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                </div>
+
+                {/* Items */}
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    {detailsGroup.length > 1 ? `Itens (${detailsGroup.length})` : "Item"}
+                  </p>
+                  {detailsGroup.map((s: any) => {
+                    const qty = Math.max(1, Math.round(Number(s.ml_sold) / ML_PER_FRASCO));
+                    return (
+                      <div key={s.id} className="flex items-center gap-2.5 p-2 rounded-xl bg-muted/30">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted shrink-0 border border-border/60">
+                          {s.products?.image_url ? (
+                            <img src={s.products.image_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-primary/10 text-xs font-bold text-primary">
+                              {s.products?.name?.charAt(0) ?? "?"}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {s.products?.name || "?"}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {s.products?.brand || "—"} · {qty} frasco(s)
+                          </p>
+                        </div>
+                        <p className="text-sm font-semibold text-emerald-600 tabular-nums shrink-0">
+                          R$ {Number(s.sale_price).toFixed(2)}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Payment */}
+                <div className="rounded-xl bg-muted/40 p-3 space-y-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    Pagamento
+                  </p>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Forma</span>
+                    <span className="font-medium text-foreground">{methodLabel}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Status</span>
+                    <span className={`font-semibold ${status === "paid" ? "text-emerald-600" : "text-amber-700"}`}>
+                      {status === "paid" ? "Pago" : "Pendente"}
+                    </span>
+                  </div>
+                  {method === "split" && (
+                    <>
+                      <div className="border-t border-border/60 pt-2 space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">1ª parcela</span>
+                          <span className={`font-medium ${head.first_paid ? "text-emerald-600" : "text-amber-700"}`}>
+                            {head.first_paid ? "Paga" : "Pendente"}
+                            {!head.first_paid && head.first_due_date &&
+                              ` · vence ${format(new Date(head.first_due_date + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}`}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">2ª parcela</span>
+                          <span className={`font-medium ${status === "paid" ? "text-emerald-600" : "text-amber-700"}`}>
+                            {status === "paid" ? "Paga" : "Pendente"}
+                            {status !== "paid" && head.due_date &&
+                              ` · vence ${format(new Date(head.due_date + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}`}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {method !== "split" && status === "pending" && head.due_date && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Vencimento</span>
+                      <span className="font-medium text-foreground">
+                        {format(new Date(head.due_date + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Totals */}
+                <div className="rounded-xl bg-muted/40 p-3 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="font-semibold text-foreground tabular-nums">R$ {total.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Pago</span>
+                    <span className="font-semibold text-emerald-600 tabular-nums">R$ {paid.toFixed(2)}</span>
+                  </div>
+                  {dueAmt > 0 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">A receber</span>
+                      <span className="font-semibold text-amber-700 tabular-nums">R$ {dueAmt.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-xs pt-1.5 border-t border-border/60">
+                    <span className="text-muted-foreground">Lucro bruto</span>
+                    <span className="font-semibold text-violet-600 tabular-nums">R$ {profit.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    className="rounded-xl gap-1.5"
+                    onClick={() => {
+                      const g = detailsGroup;
+                      setDetailsGroup(null);
+                      openCharge(g);
+                    }}
+                  >
+                    <FileText className="w-4 h-4" /> Recibo
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="rounded-xl gap-1.5"
+                    onClick={() => {
+                      const g = detailsGroup;
+                      setDetailsGroup(null);
+                      openEditSale(g);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" /> Editar
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
