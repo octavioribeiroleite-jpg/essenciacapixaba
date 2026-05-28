@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, X, Loader2, Star } from "lucide-react";
+import { Sparkles, X, Loader2, Star, Search, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { createClient } from "@supabase/supabase-js";
@@ -101,6 +101,9 @@ export default function FragranceDiscovery({
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
   const [quizResults, setQuizResults] = useState<Product[]>([]);
   const [similarQuery, setSimilarQuery] = useState("");
+  const [similarPickerOpen, setSimilarPickerOpen] = useState(false);
+  const [similarPickerSearch, setSimilarPickerSearch] = useState("");
+  const [selectedRef, setSelectedRef] = useState<Product | null>(null);
   const [similarResults, setSimilarResults] = useState<Product[]>([]);
   const [importQuery, setImportQuery] = useState("");
   const [importResults, setImportResults] = useState<Product[]>([]);
@@ -116,6 +119,9 @@ export default function FragranceDiscovery({
     setQuizAnswers({});
     setQuizResults([]);
     setSimilarQuery("");
+    setSimilarPickerOpen(false);
+    setSimilarPickerSearch("");
+    setSelectedRef(null);
     setSimilarResults([]);
     setImportQuery("");
     setImportResults([]);
@@ -152,13 +158,7 @@ export default function FragranceDiscovery({
     }
   };
 
-  const handleSimilarSearch = () => {
-    if (!similarQuery.trim()) return;
-    const ref = products.find((p) => p.name.toLowerCase().includes(similarQuery.toLowerCase()));
-    if (!ref) {
-      toast.error("Perfume não encontrado no catálogo. Tente a busca por importado.");
-      return;
-    }
+  const runSimilarSearch = (ref: Product) => {
     const refNotes = [
       ...(ref.fragrance_notes?.top || []),
       ...(ref.fragrance_notes?.heart || []),
@@ -166,7 +166,7 @@ export default function FragranceDiscovery({
     ].map((n) => n.toLowerCase());
 
     const scored = products
-      .filter((p) => p.id !== ref.id && p.current_ml > 0)
+      .filter((p) => p.id !== ref.id)
       .map((p) => {
         let score = 0;
         const pNotes = [
@@ -186,11 +186,35 @@ export default function FragranceDiscovery({
         return { ...p, similarity_score: score };
       })
       .filter((p) => (p.similarity_score ?? 0) > 0)
-      .sort((a, b) => (b.similarity_score ?? 0) - (a.similarity_score ?? 0))
-      .slice(0, 5);
+      .sort((a, b) => {
+        // disponíveis primeiro
+        const aIn = a.current_ml > 0 ? 1 : 0;
+        const bIn = b.current_ml > 0 ? 1 : 0;
+        if (aIn !== bIn) return bIn - aIn;
+        return (b.similarity_score ?? 0) - (a.similarity_score ?? 0);
+      })
+      .slice(0, 6);
 
     setSimilarResults(scored);
     if (scored.length === 0) toast.info("Nenhum similar encontrado no estoque atual.");
+  };
+
+  const pickerProducts = () => {
+    const q = similarPickerSearch.trim().toLowerCase();
+    const filtered = products.filter((p) => {
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.brand || "").toLowerCase().includes(q) ||
+        (p.olfactory_family || "").toLowerCase().includes(q)
+      );
+    });
+    return filtered.sort((a, b) => {
+      const aIn = a.current_ml > 0 ? 1 : 0;
+      const bIn = b.current_ml > 0 ? 1 : 0;
+      if (aIn !== bIn) return bIn - aIn;
+      return a.name.localeCompare(b.name);
+    });
   };
 
   const handleImportSearch = async () => {
@@ -355,26 +379,41 @@ export default function FragranceDiscovery({
               <X className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">Digite o nome de um perfume do nosso catálogo</p>
-          <div className="flex gap-2 mb-3">
-            <Input
-              placeholder="Ex: Asad Bourbon, Yara..."
-              value={similarQuery}
-              onChange={(e) => setSimilarQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSimilarSearch()}
-              className="flex-1 rounded-xl text-sm"
-            />
-            <button
-              onClick={handleSimilarSearch}
-              className="bg-primary text-primary-foreground px-4 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
-            >
-              Buscar
-            </button>
-          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Escolha um perfume do nosso catálogo para encontrar opções com perfil parecido
+          </p>
+          <button
+            onClick={() => setSimilarPickerOpen(true)}
+            className="w-full flex items-center gap-3 bg-muted/40 border border-border rounded-xl px-3 py-3 text-left hover:border-primary transition-all mb-3"
+          >
+            {selectedRef ? (
+              <>
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {selectedRef.image_url ? (
+                    <img src={selectedRef.image_url} alt="" className="w-10 h-10 object-cover rounded-lg" />
+                  ) : (
+                    <span className="text-sm font-bold text-primary">{selectedRef.name.charAt(0)}</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate">{selectedRef.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {selectedRef.brand || "Sem marca"} · trocar
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <Search className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground flex-1">Selecionar perfume do catálogo</span>
+              </>
+            )}
+          </button>
+
           {similarResults.length > 0 && (
             <>
               <p className="text-xs text-muted-foreground mb-2">
-                Perfumes similares a <strong>{similarQuery}</strong>:
+                Perfumes similares a <strong>{selectedRef?.name}</strong>:
               </p>
               <div className="flex flex-col gap-2">
                 {similarResults.map((p) => (
@@ -382,6 +421,119 @@ export default function FragranceDiscovery({
                 ))}
               </div>
             </>
+          )}
+
+          {similarPickerOpen && (
+            <div
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in"
+              onClick={() => setSimilarPickerOpen(false)}
+            >
+              <div
+                className="bg-card w-full sm:max-w-md max-h-[85vh] rounded-t-3xl sm:rounded-3xl border border-border shadow-2xl flex flex-col animate-in slide-in-from-bottom"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-4 border-b border-border flex items-center justify-between flex-shrink-0">
+                  <h3 className="font-bold text-sm">Escolha um perfume</h3>
+                  <button
+                    onClick={() => setSimilarPickerOpen(false)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="p-3 border-b border-border flex-shrink-0">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      autoFocus
+                      placeholder="Buscar nome, marca ou família..."
+                      value={similarPickerSearch}
+                      onChange={(e) => setSimilarPickerSearch(e.target.value)}
+                      className="pl-9 rounded-xl text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="overflow-y-auto flex-1 p-2">
+                  {(() => {
+                    const list = pickerProducts();
+                    const inStock = list.filter((p) => p.current_ml > 0);
+                    const out = list.filter((p) => p.current_ml <= 0);
+                    return (
+                      <>
+                        {inStock.length > 0 && (
+                          <p className="text-[10px] font-bold text-emerald-700 uppercase px-2 py-1.5">
+                            Disponíveis ({inStock.length})
+                          </p>
+                        )}
+                        {inStock.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              setSelectedRef(p);
+                              setSimilarPickerOpen(false);
+                              runSimilarSearch(p);
+                            }}
+                            className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-muted text-left"
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              {p.image_url ? (
+                                <img src={p.image_url} alt="" className="w-10 h-10 object-cover rounded-lg" />
+                              ) : (
+                                <span className="text-sm font-bold text-primary">{p.name.charAt(0)}</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{p.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {p.brand || "Sem marca"}
+                                {p.olfactory_family ? ` · ${p.olfactory_family}` : ""}
+                              </p>
+                            </div>
+                            {selectedRef?.id === p.id && <Check className="w-4 h-4 text-primary" />}
+                          </button>
+                        ))}
+                        {out.length > 0 && (
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase px-2 py-1.5 mt-2">
+                            Sob encomenda ({out.length})
+                          </p>
+                        )}
+                        {out.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              setSelectedRef(p);
+                              setSimilarPickerOpen(false);
+                              runSimilarSearch(p);
+                            }}
+                            className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-muted text-left opacity-70"
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              {p.image_url ? (
+                                <img src={p.image_url} alt="" className="w-10 h-10 object-cover rounded-lg" />
+                              ) : (
+                                <span className="text-sm font-bold text-muted-foreground">{p.name.charAt(0)}</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{p.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {p.brand || "Sem marca"}
+                                {p.olfactory_family ? ` · ${p.olfactory_family}` : ""}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                        {list.length === 0 && (
+                          <p className="text-center text-sm text-muted-foreground py-8">
+                            Nenhum perfume encontrado
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}
