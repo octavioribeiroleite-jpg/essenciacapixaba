@@ -227,7 +227,7 @@ export default function Dashboard() {
       </div>
 
       <button
-        onClick={() => navigate("/catalogo")}
+        onClick={() => navigate("/catalogo?app=1")}
         className="fade-in hover-lift w-full flex items-center justify-between bg-card border border-border/60 rounded-2xl px-4 py-4 hover:border-primary/50 hover:shadow-md transition-all"
       >
         <div className="flex items-center gap-3">
