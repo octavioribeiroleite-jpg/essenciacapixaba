@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ML_PER_FRASCO, perFrasco, priceFrascoRounded, formatFrascos } from "@/lib/frascos";
-import { ArrowLeft, Wallet, Package, TrendingUp, DollarSign, AlertTriangle, ArrowUpDown } from "lucide-react";
+import { ArrowLeft, Wallet, Package, TrendingUp, DollarSign, AlertTriangle, ArrowUpDown, ChevronDown } from "lucide-react";
 
 type SortKey = "valor" | "nome" | "estoque" | "lucro";
 
@@ -15,6 +15,7 @@ export default function Patrimonio() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [sort, setSort] = useState<SortKey>("valor");
+  const [showZerados, setShowZerados] = useState(false);
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["patrimonio-products"],
@@ -74,6 +75,7 @@ export default function Patrimonio() {
 
   const margem = totais.investido > 0 ? (totais.lucro / totais.investido) * 100 : 0;
   const rowsComEstoque = rows.filter((r) => r.frascos > 0);
+  const rowsZerados = rows.filter((r) => r.frascos === 0);
 
   return (
     <div className="p-4 lg:p-0 space-y-4 max-w-lg lg:max-w-7xl mx-auto pb-24 lg:pb-8">
@@ -167,38 +169,98 @@ export default function Patrimonio() {
           Nenhum produto cadastrado ainda.
         </div>
       ) : (
-        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-          {rows.map((r, idx) => (
-            <button
-              key={r.id}
-              onClick={() => navigate(`/products/${r.id}`)}
-              className={`w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-secondary/60 transition-colors ${
-                idx !== rows.length - 1 ? "border-b border-border/40" : ""
-              } ${r.frascos === 0 ? "opacity-60" : ""}`}
-            >
-              <div className="h-11 w-11 rounded-lg overflow-hidden bg-muted shrink-0 border border-border/50">
-                {r.image_url ? (
-                  <img src={r.image_url} alt={r.name} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-amber-200 text-primary text-sm font-bold">
-                    {r.name.charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate">{r.name}</p>
-                <p className="text-[11px] text-muted-foreground truncate">
-                  {r.brand || "—"} · {formatFrascos(r.frascos * ML_PER_FRASCO)} frasco(s) ·{" "}
-                  custo {brl(r.custoFrasco)}/un
-                </p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-sm font-bold text-primary">{brl(r.potencial)}</p>
-                <p className="text-[11px] text-emerald-600 font-medium">+{brl(r.lucro)}</p>
-              </div>
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+            {rowsComEstoque.map((r, idx) => (
+              <button
+                key={r.id}
+                onClick={() => navigate(`/products/${r.id}`)}
+                className={`w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-secondary/60 transition-colors ${
+                  idx !== rowsComEstoque.length - 1 ? "border-b border-border/40" : ""
+                }`}
+              >
+                <div className="h-11 w-11 rounded-lg overflow-hidden bg-muted shrink-0 border border-border/50">
+                  {r.image_url ? (
+                    <img src={r.image_url} alt={r.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-amber-200 text-primary text-sm font-bold">
+                      {r.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{r.name}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {r.brand || "—"} · {formatFrascos(r.frascos * ML_PER_FRASCO)} frasco(s) ·{" "}
+                    custo {brl(r.custoFrasco)}/un
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold text-primary">{brl(r.potencial)}</p>
+                  <p className="text-[11px] text-emerald-600 font-medium">+{brl(r.lucro)}</p>
+                </div>
+              </button>
+            ))}
+            {rowsComEstoque.length === 0 && (
+              <p className="text-center text-xs text-muted-foreground py-6">
+                Nenhum produto com estoque no momento.
+              </p>
+            )}
+          </div>
+
+          {rowsZerados.length > 0 && (
+            <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+              <button
+                onClick={() => setShowZerados((v) => !v)}
+                className="w-full flex items-center gap-3 px-3 py-3 hover:bg-secondary/60 transition-colors"
+              >
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Indisponíveis</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {rowsZerados.length} produto(s) sem estoque · sob encomenda
+                  </p>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-muted-foreground transition-transform ${
+                    showZerados ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              {showZerados && (
+                <div className="border-t border-border/40">
+                  {rowsZerados.map((r, idx) => (
+                    <button
+                      key={r.id}
+                      onClick={() => navigate(`/products/${r.id}`)}
+                      className={`w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-secondary/60 transition-colors opacity-75 ${
+                        idx !== rowsZerados.length - 1 ? "border-b border-border/40" : ""
+                      }`}
+                    >
+                      <div className="h-9 w-9 rounded-lg overflow-hidden bg-muted shrink-0 border border-border/50">
+                        {r.image_url ? (
+                          <img src={r.image_url} alt={r.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-amber-200 text-primary text-xs font-bold">
+                            {r.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{r.name}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {r.brand || "—"} · venda {brl(r.vendaFrasco)}/un
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       <p className="text-[10px] text-center text-muted-foreground pt-2">
