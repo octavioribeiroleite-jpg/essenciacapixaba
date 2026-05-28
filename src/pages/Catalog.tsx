@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
 import {
   Search, MessageCircle, Share2, Sparkles, Droplet, User, Clock, Wind,
-  SlidersHorizontal, GitCompare, Check, CalendarClock, Copy, FileDown,
+  SlidersHorizontal, GitCompare, Check, CalendarClock, Copy, FileDown, ArrowLeft,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -58,6 +58,8 @@ export default function Catalog() {
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<GenderFilter>("Todos");
   const [selected, setSelected] = useState<Product | null>(null);
+  const [searchParams] = useSearchParams();
+  const inApp = searchParams.get("app") === "1";
   const [showFilters, setShowFilters] = useState(false);
   const [brandFilter, setBrandFilter] = useState<string>("Todas");
   const [occasionFilter, setOccasionFilter] = useState<string | null>(null);
@@ -272,7 +274,18 @@ export default function Catalog() {
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-40 backdrop-blur-sm bg-card/90">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex items-center gap-2">
+            {inApp && (
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="h-8 w-8 rounded-md flex items-center justify-center hover:bg-secondary transition-colors flex-shrink-0"
+                aria-label="Voltar ao app"
+                title="Voltar ao app"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+            <div className="min-w-0">
             <h1 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-1.5 truncate">
               <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
               Essência Capixaba
@@ -280,6 +293,7 @@ export default function Catalog() {
             <p className="text-[10px] sm:text-xs text-muted-foreground">
               {products.length} {products.length === 1 ? "perfume" : "perfumes"} disponíveis
             </p>
+            </div>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
