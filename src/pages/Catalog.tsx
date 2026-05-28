@@ -457,9 +457,10 @@ export default function Catalog() {
               <div key={i} className="aspect-[3/4] bg-card rounded-2xl border border-border animate-pulse" />
             ))}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {filtered.map((p) => {
+        ) : (() => {
+          const inStock = filtered.filter((p) => Number(p.current_ml) > 0);
+          const onDemand = filtered.filter((p) => Number(p.current_ml) <= 0);
+          const renderCard = (p: Product) => {
               const fr = frascosCount(p);
               const badge = stockBadge(fr);
               const topNote = p.fragrance_notes?.top?.[0];
@@ -591,9 +592,46 @@ export default function Catalog() {
                   </div>
                 </div>
               );
-            })}
-          </div>
-        )}
+          };
+          return (
+            <div className="space-y-6">
+              {inStock.length > 0 && (
+                <section className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_4px_hsl(var(--background)),0_0_0_5px_rgb(16_185_129_/_0.3)]" />
+                    <h2 className="text-sm sm:text-base font-bold tracking-wide uppercase text-foreground">
+                      Disponíveis em estoque
+                    </h2>
+                    <span className="text-[11px] text-muted-foreground">({inStock.length})</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-border via-border to-transparent" />
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {inStock.map(renderCard)}
+                  </div>
+                </section>
+              )}
+
+              {onDemand.length > 0 && (
+                <section className="space-y-3 pt-2">
+                  <div className="flex items-center gap-3">
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shadow-[0_0_0_4px_hsl(var(--background)),0_0_0_5px_rgb(245_158_11_/_0.3)]" />
+                    <h2 className="text-sm sm:text-base font-bold tracking-wide uppercase text-foreground">
+                      Sob encomenda
+                    </h2>
+                    <span className="text-[11px] text-muted-foreground">({onDemand.length})</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-border via-border to-transparent" />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground -mt-1">
+                    Disponíveis mediante encomenda — prazo combinado via WhatsApp.
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {onDemand.map(renderCard)}
+                  </div>
+                </section>
+              )}
+            </div>
+          );
+        })()}
 
         {!loading && filtered.length === 0 && (
           <div className="text-center py-16 space-y-2">
