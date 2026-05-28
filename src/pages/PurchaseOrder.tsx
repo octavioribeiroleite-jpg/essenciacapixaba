@@ -70,15 +70,35 @@ export default function PurchaseOrder() {
     enabled: !!user,
   });
 
+  // IDs de produtos que já foram comprados (têm entrada em estoque)
+  const { data: purchasedIds } = useQuery({
+    queryKey: ["purchased-product-ids"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stock_movements")
+        .select("product_id")
+        .in("type", ["initial", "restock"]);
+      if (error) throw error;
+      return new Set((data ?? []).map((r) => r.product_id as string));
+    },
+    enabled: !!user,
+  });
+
   const classifications = useMemo(
     () => classifyProducts(products ?? [], sales ?? []),
     [products, sales]
   );
 
+  // Apenas perfumes que já foram comprados antes
+  const purchasedProducts = useMemo(
+    () => (products ?? []).filter((p) => purchasedIds?.has(p.id)),
+    [products, purchasedIds]
+  );
+
   // Lista inicial automática: estoque <= 1 frasco E não vermelho
   const initial = useMemo<OrderItem[]>(() => {
-    if (!products) return [];
-    return products
+    if (!purchasedProducts.length) return [];
+    return purchasedProducts
       .filter((p) => {
         const c = classifications.get(p.id);
         const frascos = Number(p.current_ml) / ML_PER_FRASCO;
@@ -97,7 +117,7 @@ export default function PurchaseOrder() {
         productId: p.id,
         qty: suggestedQuantity(classifications.get(p.id)?.tier ?? "gray"),
       }));
-  }, [products, classifications]);
+  }, [purchasedProducts, classifications]);
 
   const order = items ?? initial;
 
@@ -175,12 +195,12 @@ export default function PurchaseOrder() {
   };
 
   const availableToAdd =
-    products?.filter(
+    purchasedProducts.filter(
       (p) =>
         !order.some((it) => it.productId === p.id) &&
         (p.name.toLowerCase().includes(addSearch.toLowerCase()) ||
           (p.brand ?? "").toLowerCase().includes(addSearch.toLowerCase()))
-    ) ?? [];
+    );
 
   return (
     <div className="p-4 lg:p-0 space-y-4 max-w-2xl mx-auto pb-32 lg:pb-8">
