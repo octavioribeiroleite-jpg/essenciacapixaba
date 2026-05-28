@@ -2,6 +2,9 @@ import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import { PIX_KEY, PIX_KEY_TYPE, PIX_RECEIVER } from "./pix";
 
+// URL pública que abre uma página que copia automaticamente a chave Pix
+const PIX_COPY_URL = "https://essenciacapixaba.lovable.app/pix";
+
 export interface ReceiptItem {
   name: string;
   brand?: string | null;
@@ -249,7 +252,7 @@ export async function generateReceiptPdf(payload: ReceiptPayload): Promise<void>
   y += obsH + 10;
 
   // ---------- PIX ----------
-  const pixBoxH = 70;
+  const pixBoxH = 88;
   if (y + pixBoxH > H - M) {
     doc.addPage();
     y = M;
@@ -281,36 +284,40 @@ export async function generateReceiptPdf(payload: ReceiptPayload): Promise<void>
     /* ignore */
   }
 
-  // Chave em caixa destacada (clicável: copia ao clicar nos visualizadores que suportam JS)
-  const keyBoxY = y + 49;
-  doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(...PRIMARY);
-  doc.setLineWidth(0.4);
-  doc.roundedRect(M + 10, keyBoxY, W - M * 2 - 20, 11, 2, 2, "FD");
-  doc.setFont("courier", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(...TEXT);
-  doc.text(PIX_KEY, W / 2, keyBoxY + 7, { align: "center" });
+  // Chave visível (selecionável) abaixo do QR
+  const keyY = y + 50;
+  doc.setFont("courier", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...MUTED);
+  doc.text(PIX_KEY, W / 2, keyY, { align: "center" });
 
-  // Tenta adicionar ação de copiar (JavaScript no PDF — funciona em Adobe Reader)
-  try {
-    const anyDoc = doc as any;
-    if (typeof anyDoc.createAnnotation === "function") {
-      anyDoc.createAnnotation({
-        type: "link",
-        bounds: { x: M + 10, y: keyBoxY, w: W - M * 2 - 20, h: 11 },
-        contents: "Copiar chave Pix",
-        action: { type: "JavaScript", script: `app.setClipboard("${PIX_KEY}"); app.alert("Chave Pix copiada!");` },
-      });
-    }
-  } catch {
-    /* ignore */
-  }
+  // BOTÃO clicável: abre página web que copia a chave automaticamente
+  const btnY = keyY + 5;
+  const btnH = 14;
+  const btnW = W - M * 2 - 20;
+  const btnX = M + 10;
+  doc.setFillColor(...PRIMARY);
+  doc.setDrawColor(...PRIMARY);
+  doc.roundedRect(btnX, btnY, btnW, btnH, 3, 3, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Toque para copiar o codigo Pix", btnX + btnW / 2, btnY + btnH / 2 + 1.5, {
+    align: "center",
+    baseline: "middle",
+  });
+  // Link clicável sobre o botão
+  doc.link(btnX, btnY, btnW, btnH, { url: PIX_COPY_URL });
 
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
   doc.setTextColor(...MUTED);
-  doc.text("Escaneie o QR Code ou toque/copie a chave acima", W / 2, keyBoxY + 16, { align: "center" });
+  doc.text(
+    "Ou escaneie o QR Code com o app do seu banco",
+    W / 2,
+    btnY + btnH + 5,
+    { align: "center" },
+  );
 
   y += pixBoxH + 8;
 

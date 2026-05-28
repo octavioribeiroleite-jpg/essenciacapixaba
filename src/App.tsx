@@ -19,6 +19,7 @@ const Sales = lazy(() => import("@/pages/Sales"));
 const Reports = lazy(() => import("@/pages/Reports"));
 const Catalog = lazy(() => import("@/pages/Catalog"));
 const PurchaseOrder = lazy(() => import("@/pages/PurchaseOrder"));
+const PixCopy = lazy(() => import("@/pages/PixCopy"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const PageFallback = () => (
@@ -40,6 +41,7 @@ const App = () => (
           <Routes>
             <Route path="/catalogo" element={<Catalog />} />
             <Route path="/catalogo/:id" element={<Catalog />} />
+            <Route path="/pix" element={<PixCopy />} />
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<Navigate to="/catalogo" replace />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
