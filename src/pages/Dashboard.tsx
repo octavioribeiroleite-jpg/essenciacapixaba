@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import {
   Package, Droplets, TrendingUp, AlertTriangle, ArrowRight,
-  DollarSign, ShoppingBag, Sunrise, Sun, Moon, Wallet,
+  DollarSign, ShoppingBag, Wallet, Droplet,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -80,9 +80,8 @@ export default function Dashboard() {
     ? `${totalFrascos}`
     : totalFrascos.toFixed(1);
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
-  const GreetingIcon = hour < 12 ? Sunrise : hour < 18 ? Sun : Moon;
+  const brl = (n: number) =>
+    n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const stats = [
     {
@@ -90,47 +89,68 @@ export default function Dashboard() {
       value: String(totalProducts),
       sub: "cadastrados",
       icon: Package,
-      gradient: "from-amber-400 to-orange-500",
+      iconClass: "bg-[#F4EFE3] text-[#8A6D2E]",
     },
     {
       label: "Estoque",
       value: frascoLabel,
       sub: totalFrascos === 1 ? "frasco" : "frascos",
       icon: Droplets,
-      gradient: "from-sky-400 to-blue-500",
+      iconClass: "bg-[#EFF1F4] text-[#5A6B7A]",
     },
     {
       label: "Receita",
-      value: `R$\u00A0${monthRevenue.toFixed(2)}`,
+      value: `R$\u00A0${brl(monthRevenue)}`,
       sub: "este mês",
       icon: DollarSign,
-      gradient: "from-emerald-400 to-green-500",
+      iconClass: "bg-[#ECF1EC] text-[#4F6B52]",
     },
     {
       label: "Lucro",
-      value: `R$\u00A0${monthProfit.toFixed(2)}`,
+      value: `R$\u00A0${brl(monthProfit)}`,
       sub: "este mês",
       icon: TrendingUp,
-      gradient: "from-violet-400 to-purple-500",
+      iconClass: "bg-[#F0EDE6] text-[#8A6D2E]",
     },
   ];
 
   return (
     <div className="p-4 lg:p-0 space-y-4 max-w-lg lg:max-w-7xl mx-auto pb-24 lg:pb-8">
-      {/* Header com gradiente */}
-      <div className="fade-in relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-amber-400 p-5 text-white shadow-lg">
-        <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-        <div className="absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
+      {/* Header premium escuro — identidade da marca */}
+      <div
+        className="fade-in relative overflow-hidden rounded-3xl p-5 lg:p-6 shadow-[0_8px_30px_rgba(17,17,17,0.08)]"
+        style={{ background: "#111111" }}
+      >
+        <div
+          className="absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-[0.07] blur-3xl"
+          style={{ background: "#C8A45D" }}
+        />
         <div className="relative flex items-center gap-4">
-          <div className="h-14 w-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/25 flex items-center justify-center shadow-inner shrink-0">
-            <GreetingIcon className="w-7 h-7 text-white" strokeWidth={1.75} />
+          <div
+            className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
+            style={{
+              background: "rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.18)",
+            }}
+          >
+            <Droplet className="w-6 h-6" style={{ color: "#C8A45D" }} strokeWidth={1.5} />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] text-white/80 capitalize">
+            <p
+              className="text-[11px] capitalize tracking-wide"
+              style={{ color: "#D8C7A3" }}
+            >
               {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </p>
-            <h1 className="text-2xl font-bold mt-0.5 leading-tight">{greeting}</h1>
-            <p className="text-xs text-white/85 mt-0.5">Aqui está o resumo do seu negócio</p>
+            <h1
+              className="mt-0.5 leading-tight text-xl lg:text-2xl font-semibold tracking-tight"
+              style={{ color: "#FFFFFF" }}
+            >
+              Essência Capixaba
+            </h1>
+            <p className="text-xs mt-1" style={{ color: "#D8C7A3" }}>
+              Gestão de perfumes, estoque e vendas.
+            </p>
           </div>
         </div>
       </div>
@@ -142,21 +162,28 @@ export default function Dashboard() {
           return (
             <div
               key={i}
-              className="fade-in bg-card rounded-2xl border border-border/60 p-3.5 flex flex-col gap-2 hover-lift transition-shadow"
+              className="fade-in rounded-2xl p-3.5 flex flex-col gap-2 hover-lift transition-shadow"
+              style={{ background: "#FFFFFF", border: "1px solid #EAE7DF" }}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <span
+                  className="text-[10px] font-semibold uppercase tracking-wider"
+                  style={{ color: "#716B63" }}
+                >
                   {stat.label}
                 </span>
-                <div className={`h-8 w-8 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-sm`}>
-                  <Icon className="w-4 h-4 text-white" />
+                <div className={`h-8 w-8 rounded-xl flex items-center justify-center ${stat.iconClass}`}>
+                  <Icon className="w-4 h-4" />
                 </div>
               </div>
-              <p className={`font-bold text-foreground leading-tight ${isMoney ? "text-base" : "text-2xl"}`}>
+              <p
+                className={`font-semibold leading-tight ${isMoney ? "text-base" : "text-2xl"}`}
+                style={{ color: "#2A2621" }}
+              >
                 {stat.value}
               </p>
               {stat.sub && (
-                <p className="text-[11px] text-muted-foreground">{stat.sub}</p>
+                <p className="text-[11px]" style={{ color: "#716B63" }}>{stat.sub}</p>
               )}
             </div>
           );
@@ -244,7 +271,7 @@ export default function Dashboard() {
                   </p>
                 </div>
                 <span className="text-sm font-semibold text-emerald-600 shrink-0">
-                  +R$ {Number(sale.sale_price).toFixed(2)}
+                  +R$ {brl(Number(sale.sale_price))}
                 </span>
               </div>
             ))}
