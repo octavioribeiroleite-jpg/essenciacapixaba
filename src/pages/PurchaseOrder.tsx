@@ -77,7 +77,7 @@ export default function PurchaseOrder() {
       const { data, error } = await supabase
         .from("stock_movements")
         .select("product_id")
-        .eq("type", "in");
+        .in("type", ["initial", "restock"]);
       if (error) throw error;
       return new Set((data ?? []).map((r) => r.product_id as string));
     },
