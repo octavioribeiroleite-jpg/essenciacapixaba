@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Copy, MessageCircle, Plus, Trash2, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Copy, MessageCircle, Plus, Trash2, ShoppingCart, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -204,15 +204,25 @@ export default function PurchaseOrder() {
         <Badge color="bg-red-500" label="Sem giro" />
       </div>
 
+      <button
+        onClick={() => setAddOpen(true)}
+        className="fade-in w-full flex items-center gap-2 bg-card border border-dashed border-primary/40 rounded-2xl px-4 py-3 text-left hover:border-primary hover:bg-primary/5 transition-colors"
+      >
+        <Search className="w-4 h-4 text-primary shrink-0" />
+        <span className="text-sm text-muted-foreground flex-1">
+          Buscar perfume para adicionar ao pedido…
+        </span>
+        <span className="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+          <Plus className="w-4 h-4" />
+        </span>
+      </button>
+
       {validItems.length === 0 && (
         <div className="text-center py-10 bg-card rounded-2xl border border-border/60 space-y-2">
           <p className="text-3xl">🎉</p>
           <p className="text-sm text-muted-foreground">
             Nenhum perfume precisando de reposição agora.
           </p>
-          <Button size="sm" variant="outline" onClick={() => setAddOpen(true)} className="mt-2">
-            <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar perfume
-          </Button>
         </div>
       )}
 
