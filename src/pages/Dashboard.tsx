@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import {
   Package, Droplets, TrendingUp, AlertTriangle, ArrowRight,
-  DollarSign, ShoppingBag, ChevronRight,
+  DollarSign, ShoppingBag, Sunrise, Sun, Moon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -71,7 +71,7 @@ export default function Dashboard() {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
-  const greetingEmoji = hour < 12 ? "🌅" : hour < 18 ? "☀️" : "🌙";
+  const GreetingIcon = hour < 12 ? Sunrise : hour < 18 ? Sun : Moon;
 
   const stats = [
     {
@@ -110,14 +110,17 @@ export default function Dashboard() {
       <div className="fade-in relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-amber-400 p-5 text-white shadow-lg">
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
         <div className="absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative">
-          <p className="text-[11px] text-white/80 capitalize">
-            {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
-          </p>
-          <h1 className="text-2xl font-bold mt-0.5">
-            {greeting} {greetingEmoji}
-          </h1>
-          <p className="text-xs text-white/85 mt-0.5">Aqui está o resumo do seu negócio</p>
+        <div className="relative flex items-center gap-4">
+          <div className="h-14 w-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/25 flex items-center justify-center shadow-inner shrink-0">
+            <GreetingIcon className="w-7 h-7 text-white" strokeWidth={1.75} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] text-white/80 capitalize">
+              {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+            </p>
+            <h1 className="text-2xl font-bold mt-0.5 leading-tight">{greeting}</h1>
+            <p className="text-xs text-white/85 mt-0.5">Aqui está o resumo do seu negócio</p>
+          </div>
         </div>
       </div>
 
@@ -150,68 +153,22 @@ export default function Dashboard() {
       </div>
 
       {lowStock.length > 0 && (
-        <div className="fade-in rounded-2xl border border-border/60 bg-card overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-500 pulse-soft" />
-              <h2 className="text-sm font-semibold text-foreground">Estoque Baixo</h2>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {emptyStock.length > 0 && (
-                <span className="text-[10px] font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
-                  {emptyStock.length} esgotado{emptyStock.length > 1 ? "s" : ""}
-                </span>
-              )}
-              <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                {lowStock.length} produto{lowStock.length > 1 ? "s" : ""}
-              </span>
-            </div>
+        <button
+          onClick={() => navigate("/pedidos")}
+          className="fade-in hover-lift w-full text-left rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 px-4 py-3.5 flex items-center gap-3 hover:border-amber-400 transition-all"
+        >
+          <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm shrink-0">
+            <AlertTriangle className="w-5 h-5 text-white" />
           </div>
-          <div className="divide-y divide-border/40">
-            {lowStock.map((p) => {
-              const frascos = Math.floor(Number(p.current_ml) / ML_PER_FRASCO);
-              const isEmpty = frascos === 0;
-              const pct = Math.min(100, (Number(p.current_ml) / (ML_PER_FRASCO * 2)) * 100);
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => navigate(`/products/${p.id}`)}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors text-left"
-                >
-                  <div className="h-11 w-11 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/50">
-                    {p.image_url ? (
-                      <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-amber-200 text-primary font-semibold">
-                        {p.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{p.brand || "Sem marca"}</p>
-                    <div className="mt-1.5 h-1 w-full bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${isEmpty ? "bg-red-400" : "bg-amber-400"}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                        isEmpty ? "text-red-700 bg-red-100" : "text-amber-700 bg-amber-100"
-                      }`}
-                    >
-                      {isEmpty ? "Esgotado" : `${frascos} frasco${frascos !== 1 ? "s" : ""}`}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                </button>
-              );
-            })}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">Estoque baixo</p>
+            <p className="text-[11px] text-muted-foreground">
+              {lowStock.length} produto{lowStock.length > 1 ? "s" : ""} precisa{lowStock.length > 1 ? "m" : ""} de reposição
+              {emptyStock.length > 0 && ` · ${emptyStock.length} esgotado${emptyStock.length > 1 ? "s" : ""}`}
+            </p>
           </div>
-        </div>
+          <ArrowRight className="w-4 h-4 text-amber-600 shrink-0" />
+        </button>
       )}
 
       <div className="fade-in rounded-2xl border border-border/60 bg-card p-4 space-y-1">
