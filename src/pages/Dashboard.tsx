@@ -165,11 +165,11 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-3 gap-2">
         <button
-          onClick={() => navigate("/catalogo?app=1")}
+          onClick={() => navigate("/products")}
           className="fade-in hover-lift rounded-2xl border border-border/60 bg-card p-3 flex flex-col items-center justify-center gap-1.5 text-center hover:border-primary/50 transition-all"
         >
           <span className="text-xl">🧴</span>
-          <p className="text-[11px] font-semibold text-foreground leading-tight">Catálogo</p>
+          <p className="text-[11px] font-semibold text-foreground leading-tight">Meu estoque</p>
         </button>
         <button
           onClick={() => navigate("/patrimonio")}
