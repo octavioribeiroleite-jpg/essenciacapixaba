@@ -8,7 +8,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ML_PER_FRASCO, perFrasco, formatFrascos } from "@/lib/frascos";
+import { ML_PER_FRASCO, perFrasco, formatFrascos, priceFrascoRounded } from "@/lib/frascos";
 
 const publicSupabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -111,7 +111,7 @@ export default function Catalog() {
 
   const { minPossible, maxPossible } = useMemo(() => {
     if (!products.length) return { minPossible: 0, maxPossible: 1000 };
-    const prices = products.map((p) => perFrasco(p.sale_price_per_ml));
+    const prices = products.map((p) => priceFrascoRounded(p.sale_price_per_ml));
     return {
       minPossible: Math.floor(Math.min(...prices)),
       maxPossible: Math.ceil(Math.max(...prices) / 100) * 100,
@@ -129,7 +129,7 @@ export default function Catalog() {
       const matchSearch = !q || p.name.toLowerCase().includes(q) || (p.brand ?? "").toLowerCase().includes(q);
       const matchGender = genderFilter === "Todos" || p.gender === genderFilter;
       const matchBrand = brandFilter === "Todas" || (p.brand || "Sem marca") === brandFilter;
-      const price = perFrasco(p.sale_price_per_ml);
+      const price = priceFrascoRounded(p.sale_price_per_ml);
       const matchPrice = price >= priceRange[0] && price <= priceRange[1];
       const matchOccasion = !occasionFilter || (p.occasions ?? []).includes(occasionFilter);
       return matchSearch && matchGender && matchBrand && matchPrice && matchOccasion;
@@ -141,14 +141,14 @@ export default function Catalog() {
       if (aOut !== bOut) return aOut - bOut;
       if (sortBy === "az") return a.name.localeCompare(b.name);
       if (sortBy === "za") return b.name.localeCompare(a.name);
-      if (sortBy === "preco_asc") return perFrasco(a.sale_price_per_ml) - perFrasco(b.sale_price_per_ml);
-      if (sortBy === "preco_desc") return perFrasco(b.sale_price_per_ml) - perFrasco(a.sale_price_per_ml);
+      if (sortBy === "preco_asc") return priceFrascoRounded(a.sale_price_per_ml) - priceFrascoRounded(b.sale_price_per_ml);
+      if (sortBy === "preco_desc") return priceFrascoRounded(b.sale_price_per_ml) - priceFrascoRounded(a.sale_price_per_ml);
       return 0;
     });
     return list;
   }, [products, search, genderFilter, brandFilter, priceRange, occasionFilter, sortBy]);
 
-  const priceFrasco = (p: Product) => perFrasco(p.sale_price_per_ml).toFixed(2);
+  const priceFrasco = (p: Product) => priceFrascoRounded(p.sale_price_per_ml).toFixed(0);
   const frascosCount = (p: Product) => Math.floor(Number(p.current_ml) / ML_PER_FRASCO);
 
   const waLink = (msg: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
