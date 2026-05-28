@@ -163,24 +163,39 @@ export default function Dashboard() {
         })}
       </div>
 
-      {lowStock.length > 0 && (
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          onClick={() => navigate("/catalogo?app=1")}
+          className="fade-in hover-lift rounded-2xl border border-border/60 bg-card p-3 flex flex-col items-center justify-center gap-1.5 text-center hover:border-primary/50 transition-all"
+        >
+          <span className="text-xl">🧴</span>
+          <p className="text-[11px] font-semibold text-foreground leading-tight">Catálogo</p>
+        </button>
+        <button
+          onClick={() => navigate("/patrimonio")}
+          className="fade-in hover-lift rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-3 flex flex-col items-center justify-center gap-1.5 text-center hover:border-emerald-400 transition-all"
+        >
+          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+            <Wallet className="w-4 h-4 text-white" />
+          </div>
+          <p className="text-[11px] font-semibold text-foreground leading-tight">Patrimônio</p>
+        </button>
         <button
           onClick={() => navigate("/pedidos")}
-          className="fade-in hover-lift w-full text-left rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 px-4 py-3.5 flex items-center gap-3 hover:border-amber-400 transition-all"
+          className={`fade-in hover-lift rounded-2xl border p-3 flex flex-col items-center justify-center gap-1.5 text-center transition-all ${
+            lowStock.length > 0
+              ? "border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 hover:border-amber-400"
+              : "border-border/60 bg-card hover:border-primary/50"
+          }`}
         >
-          <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm shrink-0">
-            <AlertTriangle className="w-5 h-5 text-white" />
+          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+            <AlertTriangle className="w-4 h-4 text-white" />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground">Estoque baixo</p>
-            <p className="text-[11px] text-muted-foreground">
-              {lowStock.length} produto{lowStock.length > 1 ? "s" : ""} precisa{lowStock.length > 1 ? "m" : ""} de reposição
-              {emptyStock.length > 0 && ` · ${emptyStock.length} esgotado${emptyStock.length > 1 ? "s" : ""}`}
-            </p>
-          </div>
-          <ArrowRight className="w-4 h-4 text-amber-600 shrink-0" />
+          <p className="text-[11px] font-semibold text-foreground leading-tight">
+            Estoque baixo{lowStock.length > 0 && ` (${lowStock.length})`}
+          </p>
         </button>
-      )}
+      </div>
 
       <div className="fade-in rounded-2xl border border-border/60 bg-card p-4 space-y-1">
         <div className="flex items-center justify-between mb-3">
@@ -237,39 +252,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      <button
-        onClick={() => navigate("/catalogo?app=1")}
-        className="fade-in hover-lift w-full flex items-center justify-between bg-card border border-border/60 rounded-2xl px-4 py-4 hover:border-primary/50 hover:shadow-md transition-all"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🧴</span>
-          <div className="text-left">
-            <p className="text-sm font-semibold text-foreground">
-              Abrir Catálogo Público
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {totalProducts} produtos · página dos clientes
-            </p>
-          </div>
-        </div>
-        <ArrowRight className="w-4 h-4 text-muted-foreground" />
-      </button>
-
-      <button
-        onClick={() => navigate("/patrimonio")}
-        className="fade-in hover-lift w-full text-left rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 px-4 py-4 flex items-center gap-3 hover:border-emerald-400 transition-all"
-      >
-        <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-sm shrink-0">
-          <Wallet className="w-5 h-5 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground">Meu patrimônio</p>
-          <p className="text-[11px] text-muted-foreground">
-            R$ {patrimonioPotencial.toFixed(0)} em estoque · investido R$ {patrimonioInvestido.toFixed(0)}
-          </p>
-        </div>
-        <ArrowRight className="w-4 h-4 text-emerald-600 shrink-0" />
-      </button>
+      {/* atalhos movidos para o topo */}
     </div>
   );
 }
