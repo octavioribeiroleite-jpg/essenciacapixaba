@@ -20,6 +20,17 @@ export function perFrasco(perMl: number | string): number {
   return (Number(perMl) || 0) * ML_PER_FRASCO;
 }
 
+/** Arredonda valor sempre para cima no múltiplo informado (default R$ 10) */
+export function roundUpTo(value: number, step = 10): number {
+  if (!value || step <= 0) return 0;
+  return Math.ceil(value / step) * step;
+}
+
+/** Preço de venda do frasco já arredondado para cima em múltiplos de R$ 10 */
+export function priceFrascoRounded(perMl: number | string): number {
+  return roundUpTo(perFrasco(perMl), 10);
+}
+
 /** Normaliza nome para detectar duplicatas (lowercase, sem acento, sem espaços extras) */
 export function normalizeName(s: string | null | undefined): string {
   return (s || "")
