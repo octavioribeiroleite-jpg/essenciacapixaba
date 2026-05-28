@@ -67,6 +67,7 @@ export default function Reports() {
   const [editSaleFirstPaid, setEditSaleFirstPaid] = useState(true);
   const [chargePayload, setChargePayload] = useState<ChargePayload | null>(null);
   const [chargeOpen, setChargeOpen] = useState(false);
+  const [detailsGroup, setDetailsGroup] = useState<any[] | null>(null);
 
   const openCharge = (saleOrGroup: any | any[]) => {
     const group = Array.isArray(saleOrGroup) ? saleOrGroup : [saleOrGroup];
