@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import QRCode from "qrcode";
 import { PIX_KEY, PIX_KEY_TYPE, PIX_RECEIVER } from "./pix";
 
 export interface ReceiptItem {
@@ -29,7 +30,40 @@ const BORDER: [number, number, number] = [230, 222, 205];
 const SOFT_BG: [number, number, number] = [250, 246, 236];
 
 async function fetchImageAsDataUrl(url: string): Promise<string | null> {
+  // Tenta via <img crossOrigin> + canvas (funciona com Supabase Storage que envia CORS *)
+  const viaImage = () =>
+    new Promise<string | null>((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const size = 256;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return resolve(null);
+          // fundo branco p/ JPEG
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, size, size);
+          // cover/contain
+          const ratio = Math.min(size / img.width, size / img.height);
+          const w = img.width * ratio;
+          const h = img.height * ratio;
+          ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+          resolve(canvas.toDataURL("image/jpeg", 0.85));
+        } catch {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+
   try {
+    const fromImg = await viaImage();
+    if (fromImg) return fromImg;
+    // Fallback: fetch direto
     const res = await fetch(url, { mode: "cors" });
     if (!res.ok) return null;
     const blob = await res.blob();
@@ -215,7 +249,7 @@ export async function generateReceiptPdf(payload: ReceiptPayload): Promise<void>
   y += obsH + 10;
 
   // ---------- PIX ----------
-  const pixBoxH = 40;
+  const pixBoxH = 70;
   if (y + pixBoxH > H - M) {
     doc.addPage();
     y = M;
@@ -235,19 +269,48 @@ export async function generateReceiptPdf(payload: ReceiptPayload): Promise<void>
   doc.setTextColor(...MUTED);
   doc.text(`${PIX_KEY_TYPE} · ${PIX_RECEIVER}`, W / 2, y + 14, { align: "center" });
 
-  // Chave em caixa destacada
+  // QR Code do Pix (chave) — escaneie pelo app do banco
+  try {
+    const qrDataUrl = await QRCode.toDataURL(PIX_KEY, {
+      margin: 1,
+      width: 320,
+      color: { dark: "#000000", light: "#ffffff" },
+    });
+    doc.addImage(qrDataUrl, "PNG", W / 2 - 14, y + 17, 28, 28);
+  } catch {
+    /* ignore */
+  }
+
+  // Chave em caixa destacada (clicável: copia ao clicar nos visualizadores que suportam JS)
+  const keyBoxY = y + 49;
   doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(...BORDER);
-  doc.roundedRect(M + 10, y + 18, W - M * 2 - 20, 12, 2, 2, "FD");
+  doc.setDrawColor(...PRIMARY);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(M + 10, keyBoxY, W - M * 2 - 20, 11, 2, 2, "FD");
   doc.setFont("courier", "bold");
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(...TEXT);
-  doc.text(PIX_KEY, W / 2, y + 26, { align: "center" });
+  doc.text(PIX_KEY, W / 2, keyBoxY + 7, { align: "center" });
+
+  // Tenta adicionar ação de copiar (JavaScript no PDF — funciona em Adobe Reader)
+  try {
+    const anyDoc = doc as any;
+    if (typeof anyDoc.createAnnotation === "function") {
+      anyDoc.createAnnotation({
+        type: "link",
+        bounds: { x: M + 10, y: keyBoxY, w: W - M * 2 - 20, h: 11 },
+        contents: "Copiar chave Pix",
+        action: { type: "JavaScript", script: `app.setClipboard("${PIX_KEY}"); app.alert("Chave Pix copiada!");` },
+      });
+    }
+  } catch {
+    /* ignore */
+  }
 
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
   doc.setTextColor(...MUTED);
-  doc.text("Copie a chave acima e cole no app do seu banco", W / 2, y + 36, { align: "center" });
+  doc.text("Escaneie o QR Code ou toque/copie a chave acima", W / 2, keyBoxY + 16, { align: "center" });
 
   y += pixBoxH + 8;
 
