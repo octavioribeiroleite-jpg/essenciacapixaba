@@ -286,52 +286,81 @@ export default function CatalogAdmin() {
         </div>
       </div>
 
-      {/* Filter panel */}
-      {filtersOpen && (
-        <div className="fade-in bg-card border border-border/60 rounded-2xl p-3 space-y-3">
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
-            <FilterSelect label="Marca" value={brand} onChange={setBrand}
-              options={[{ value: "all", label: "Todas marcas" }, ...brands.map((b) => ({ value: b, label: b }))]} />
-            <FilterSelect label="Família" value={family} onChange={setFamily}
-              options={[{ value: "all", label: "Todas famílias" }, ...families.map((f) => ({ value: f, label: f }))]} />
-            <FilterSelect label="Gênero" value={gender} onChange={setGender} options={[
-              { value: "all", label: "Todos" },
-              { value: "Masculino", label: "Masculino" },
-              { value: "Feminino", label: "Feminino" },
-              { value: "Unissex", label: "Unissex" },
-            ]} />
-            <FilterSelect label="Estoque" value={stock} onChange={(v) => setStock(v as StockFilter)} options={[
-              { value: "all", label: "Todos" },
-              { value: "in_stock", label: "Com estoque" },
-              { value: "low", label: "Estoque baixo" },
-              { value: "out", label: "Esgotado" },
-            ]} />
-            <FilterSelect label="Giro" value={tier} onChange={(v) => setTier(v as Tier | "all")} options={[
-              { value: "all", label: "Todos" },
-              { value: "green", label: "🟢 Alta demanda" },
-              { value: "yellow", label: "🟡 Média" },
-              { value: "red", label: "🔴 Sem giro" },
-              { value: "gray", label: "⚪ Novo" },
-            ]} />
-          </div>
-          <div className="flex items-center justify-between gap-2 pt-1">
-            <FilterSelect label="Ordenar" value={sortKey} onChange={(v) => setSortKey(v as SortKey)} options={[
-              { value: "name_asc", label: "Nome A-Z" },
-              { value: "name_desc", label: "Nome Z-A" },
-              { value: "price_asc", label: "Menor preço" },
-              { value: "price_desc", label: "Maior preço" },
-              { value: "stock_desc", label: "Mais estoque" },
-              { value: "stock_asc", label: "Menos estoque" },
-              { value: "tier", label: "Por giro" },
-            ]} />
-            {activeFilters > 0 && (
-              <Button variant="ghost" size="sm" className="gap-1 text-xs h-8" onClick={clearFilters}>
-                <X className="w-3.5 h-3.5" /> Limpar
+      {/* Filter sheet — sobe de baixo, fundo preto premium */}
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent
+          side="bottom"
+          className="border-t border-[#2a2a2a] bg-[#111111] text-[#EAE7DF] rounded-t-3xl p-0 max-h-[85vh] overflow-y-auto shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.6)]"
+        >
+          <div className="mx-auto w-12 h-1.5 rounded-full bg-white/15 mt-2.5 mb-1" />
+          <SheetHeader className="px-5 pt-2 pb-3 text-left">
+            <SheetTitle className="text-base font-semibold text-[#EAE7DF] flex items-center gap-2">
+              <Filter className="w-4 h-4 text-primary" />
+              Filtros e ordenação
+            </SheetTitle>
+          </SheetHeader>
+
+          <div className="px-5 pb-6 space-y-4 [&_label]:text-white/60 [&_button[role=combobox]]:bg-white/5 [&_button[role=combobox]]:border-white/10 [&_button[role=combobox]]:text-[#EAE7DF] [&_button[role=combobox]]:hover:bg-white/10">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5">
+              <FilterSelect label="Marca" value={brand} onChange={setBrand}
+                options={[{ value: "all", label: "Todas marcas" }, ...brands.map((b) => ({ value: b, label: b }))]} />
+              <FilterSelect label="Família" value={family} onChange={setFamily}
+                options={[{ value: "all", label: "Todas famílias" }, ...families.map((f) => ({ value: f, label: f }))]} />
+              <FilterSelect label="Gênero" value={gender} onChange={setGender} options={[
+                { value: "all", label: "Todos" },
+                { value: "Masculino", label: "Masculino" },
+                { value: "Feminino", label: "Feminino" },
+                { value: "Unissex", label: "Unissex" },
+              ]} />
+              <FilterSelect label="Estoque" value={stock} onChange={(v) => setStock(v as StockFilter)} options={[
+                { value: "all", label: "Todos" },
+                { value: "in_stock", label: "Com estoque" },
+                { value: "low", label: "Estoque baixo" },
+                { value: "out", label: "Esgotado" },
+              ]} />
+              <FilterSelect label="Giro" value={tier} onChange={(v) => setTier(v as Tier | "all")} options={[
+                { value: "all", label: "Todos" },
+                { value: "green", label: "🟢 Alta demanda" },
+                { value: "yellow", label: "🟡 Média" },
+                { value: "red", label: "🔴 Sem giro" },
+                { value: "gray", label: "⚪ Novo" },
+              ]} />
+            </div>
+
+            <div className="pt-2 border-t border-white/10">
+              <FilterSelect label="Ordenar por" value={sortKey} onChange={(v) => setSortKey(v as SortKey)} options={[
+                { value: "name_asc", label: "Nome A-Z" },
+                { value: "name_desc", label: "Nome Z-A" },
+                { value: "price_asc", label: "Menor preço" },
+                { value: "price_desc", label: "Maior preço" },
+                { value: "stock_desc", label: "Mais estoque" },
+                { value: "stock_asc", label: "Menos estoque" },
+                { value: "tier", label: "Por giro" },
+              ]} />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              {activeFilters > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1 text-xs h-10 bg-transparent border-white/15 text-[#EAE7DF] hover:bg-white/10 hover:text-white"
+                  onClick={clearFilters}
+                >
+                  <X className="w-3.5 h-3.5" /> Limpar filtros
+                </Button>
+              )}
+              <Button
+                size="sm"
+                className="flex-1 text-xs h-10 bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => setFiltersOpen(false)}
+              >
+                Ver {stats.total} resultado{stats.total === 1 ? "" : "s"}
               </Button>
-            )}
+            </div>
           </div>
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
 
       {/* Quick actions row */}
       <div className="fade-in flex flex-wrap gap-2">
