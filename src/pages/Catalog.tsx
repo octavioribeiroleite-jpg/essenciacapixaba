@@ -58,6 +58,8 @@ export default function Catalog() {
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<GenderFilter>("Todos");
   const [selected, setSelected] = useState<Product | null>(null);
+  const [searchParams] = useSearchParams();
+  const inApp = searchParams.get("app") === "1";
   const [showFilters, setShowFilters] = useState(false);
   const [brandFilter, setBrandFilter] = useState<string>("Todas");
   const [occasionFilter, setOccasionFilter] = useState<string | null>(null);
