@@ -376,11 +376,11 @@ export default function ProductDetail() {
   const editMutation = useMutation({
     mutationFn: async () => {
       if (!product || !user) throw new Error("Erro");
-      const ml = parseFloat(editTotalMl);
+      const ml = 100;
       const cost = parseFloat(editTotalCost) || 0;
       const sale = parseFloat(editTotalSale) || 0;
       if (!editName.trim()) throw new Error("Nome é obrigatório");
-      if (!ml || ml <= 0) throw new Error("ML do frasco inválido");
+      // Frasco padrão de 100 ml
 
       let image_url = product.image_url;
       if (editImage) {
