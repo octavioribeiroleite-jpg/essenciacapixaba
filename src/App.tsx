@@ -18,6 +18,7 @@ const Scanner = lazy(() => import("@/pages/Scanner"));
 const Sales = lazy(() => import("@/pages/Sales"));
 const Reports = lazy(() => import("@/pages/Reports"));
 const Catalog = lazy(() => import("@/pages/Catalog"));
+const CatalogAdmin = lazy(() => import("@/pages/CatalogAdmin"));
 const PurchaseOrder = lazy(() => import("@/pages/PurchaseOrder"));
 const Restock = lazy(() => import("@/pages/Restock"));
 const Patrimonio = lazy(() => import("@/pages/Patrimonio"));
@@ -57,6 +58,7 @@ const App = () => (
               <Route path="/pedidos" element={<PurchaseOrder />} />
               <Route path="/compras/nova" element={<Restock />} />
               <Route path="/patrimonio" element={<Patrimonio />} />
+              <Route path="/catalogo-admin" element={<CatalogAdmin />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

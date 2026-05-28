@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Sparkles, Loader2, Wind, Share2, Upload, ShoppingCart, PackagePlus } from "lucide-react";
+import { Plus, Search, Sparkles, Loader2, Wind, Share2, Upload, ShoppingCart, PackagePlus, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMemo, useState } from "react";
@@ -192,6 +192,17 @@ export default function Products() {
           variant="outline"
         >
           <ShoppingCart className="w-3.5 h-3.5" /> Gerar encomenda de reposição
+        </Button>
+      </div>
+
+      <div className="fade-in">
+        <Button
+          size="sm"
+          onClick={() => navigate("/catalogo-admin")}
+          className="w-full gap-1.5 text-xs h-10"
+          variant="outline"
+        >
+          <LayoutGrid className="w-3.5 h-3.5 text-primary" /> Abrir catálogo admin (filtros e ações em massa)
         </Button>
       </div>
 
