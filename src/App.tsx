@@ -20,6 +20,7 @@ const Reports = lazy(() => import("@/pages/Reports"));
 const Catalog = lazy(() => import("@/pages/Catalog"));
 const PurchaseOrder = lazy(() => import("@/pages/PurchaseOrder"));
 const Restock = lazy(() => import("@/pages/Restock"));
+const Patrimonio = lazy(() => import("@/pages/Patrimonio"));
 const PixCopy = lazy(() => import("@/pages/PixCopy"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/reports" element={<Reports />} />
               <Route path="/pedidos" element={<PurchaseOrder />} />
               <Route path="/compras/nova" element={<Restock />} />
+              <Route path="/patrimonio" element={<Patrimonio />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
