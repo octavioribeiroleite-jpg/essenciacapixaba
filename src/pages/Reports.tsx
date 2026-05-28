@@ -837,7 +837,11 @@ export default function Reports() {
                   key={head.order_id || head.id}
                   className="p-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setDetailsGroup(group)}
+                    className="w-full text-left flex items-center gap-2.5 min-w-0"
+                  >
                     <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/60">
                       {head.products?.image_url ? (
                         <img src={head.products.image_url} alt="" className="w-full h-full object-cover" />
@@ -879,7 +883,7 @@ export default function Reports() {
                         </p>
                       )}
                     </div>
-                  </div>
+                  </button>
                   <div className="flex items-center justify-between gap-2 mt-2 min-w-0">
                     <div className="flex items-center gap-1 flex-wrap min-w-0">
                       {head.payment_method === "cash" && <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap"><Banknote className="w-2.5 h-2.5" />Dinheiro</span>}
