@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import {
   Package, Droplets, TrendingUp, AlertTriangle, ArrowRight,
-  DollarSign, ShoppingBag, Wallet, Droplet,
+  DollarSign, ShoppingBag, Wallet, Droplet, Boxes,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -193,9 +193,11 @@ export default function Dashboard() {
       <div className="grid grid-cols-3 gap-2">
         <button
           onClick={() => navigate("/products")}
-          className="fade-in hover-lift rounded-2xl border border-border/60 bg-card p-3 flex flex-col items-center justify-center gap-1.5 text-center hover:border-primary/50 transition-all"
+          className="fade-in hover-lift rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 p-3 flex flex-col items-center justify-center gap-1.5 text-center hover:border-amber-400 transition-all"
         >
-          <span className="text-xl">🧴</span>
+          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center shadow-sm">
+            <Boxes className="w-4 h-4 text-white" strokeWidth={2.2} />
+          </div>
           <p className="text-[11px] font-semibold text-foreground leading-tight">Meu estoque</p>
         </button>
         <button

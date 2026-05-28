@@ -62,11 +62,20 @@ export default function Products() {
     [products, salesForClass]
   );
 
-  const filtered = products?.filter(
-    (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      (p.brand && p.brand.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    const list = (products ?? []).filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.brand && p.brand.toLowerCase().includes(q))
+    );
+    return [...list].sort((a, b) => {
+      const aEmpty = Number(a.current_ml) <= 0 ? 1 : 0;
+      const bEmpty = Number(b.current_ml) <= 0 ? 1 : 0;
+      if (aEmpty !== bEmpty) return aEmpty - bEmpty;
+      return a.name.localeCompare(b.name, "pt-BR");
+    });
+  }, [products, search]);
 
   const runPhotos = async () => {
     if (!products?.length || !user) return;
