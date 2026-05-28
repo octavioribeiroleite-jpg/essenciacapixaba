@@ -1,0 +1,1 @@
+UPDATE public.sales SET order_id = '58f3a414-4e8e-48b3-b4f0-0c0ff303be6e' WHERE id IN ('58f3a414-4e8e-48b3-b4f0-0c0ff303be6e','ba4e561a-25ed-4f8a-b288-261eb2a0e7df');
