@@ -271,7 +271,7 @@ export default function Dashboard() {
                   </p>
                 </div>
                 <span className="text-sm font-semibold text-emerald-600 shrink-0">
-                  +R$ {Number(sale.sale_price).toFixed(2)}
+                  +R$ {brl(Number(sale.sale_price))}
                 </span>
               </div>
             ))}
