@@ -3,12 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import {
   Package, Droplets, TrendingUp, AlertTriangle, ArrowRight,
-  DollarSign, ShoppingBag, Sunrise, Sun, Moon,
+  DollarSign, ShoppingBag, Sunrise, Sun, Moon, Wallet,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
-import { ML_PER_FRASCO, formatFrascos } from "@/lib/frascos";
+import { ML_PER_FRASCO, formatFrascos, perFrasco, priceFrascoRounded } from "@/lib/frascos";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -47,6 +47,17 @@ export default function Dashboard() {
   const totalProducts = products?.length ?? 0;
   const totalFrascos =
     products?.reduce((sum, p) => sum + Number(p.current_ml) / ML_PER_FRASCO, 0) ?? 0;
+  const patrimonioInvestido =
+    products?.reduce(
+      (sum, p) => sum + perFrasco(p.cost_per_ml) * (Number(p.current_ml) / ML_PER_FRASCO),
+      0,
+    ) ?? 0;
+  const patrimonioPotencial =
+    products?.reduce(
+      (sum, p) =>
+        sum + priceFrascoRounded(p.sale_price_per_ml) * (Number(p.current_ml) / ML_PER_FRASCO),
+      0,
+    ) ?? 0;
   const lowStock =
     products?.filter((p) => Number(p.current_ml) < ML_PER_FRASCO * 2) ?? [];
   const emptyStock = lowStock.filter((p) => Number(p.current_ml) === 0);
@@ -242,6 +253,22 @@ export default function Dashboard() {
           </div>
         </div>
         <ArrowRight className="w-4 h-4 text-muted-foreground" />
+      </button>
+
+      <button
+        onClick={() => navigate("/patrimonio")}
+        className="fade-in hover-lift w-full text-left rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 px-4 py-4 flex items-center gap-3 hover:border-emerald-400 transition-all"
+      >
+        <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-sm shrink-0">
+          <Wallet className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground">Meu patrimônio</p>
+          <p className="text-[11px] text-muted-foreground">
+            R$ {patrimonioPotencial.toFixed(0)} em estoque · investido R$ {patrimonioInvestido.toFixed(0)}
+          </p>
+        </div>
+        <ArrowRight className="w-4 h-4 text-emerald-600 shrink-0" />
       </button>
     </div>
   );
