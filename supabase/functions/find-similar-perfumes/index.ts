@@ -76,6 +76,18 @@ Deno.serve(async (req) => {
     if (!res.ok) {
       const txt = await res.text();
       console.error("ai_error", res.status, txt);
+      if (res.status === 402) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "no_credits", message: "Créditos da IA esgotados. Adicione créditos no Lovable Cloud." }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      if (res.status === 429) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "rate_limit", message: "Muitas buscas em sequência. Aguarde alguns segundos." }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
       throw new Error("ai_error");
     }
 

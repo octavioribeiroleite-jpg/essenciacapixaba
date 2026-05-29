@@ -229,6 +229,10 @@ export default function FragranceDiscovery({
       if (error || !data?.ok) {
         if (data?.error === "low_confidence") {
           toast.warning("Não consegui identificar esse perfume com certeza. Tente o nome completo.");
+        } else if (data?.error === "no_credits") {
+          toast.error(data.message || "Créditos da IA esgotados.");
+        } else if (data?.error === "rate_limit") {
+          toast.warning(data.message || "Muitas buscas. Aguarde alguns segundos.");
         } else {
           toast.error("Erro ao buscar. Tente novamente.");
         }
