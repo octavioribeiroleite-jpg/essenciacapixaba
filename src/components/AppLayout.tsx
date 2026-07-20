@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, BarChart3, LogOut, Droplets, RefreshCw } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, BarChart3, LogOut, Droplets, RefreshCw, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -12,6 +12,7 @@ const navItems = [
   { to: "/products", icon: Package, label: "Produtos" },
   { to: "/sell", icon: ShoppingCart, label: "Vender" },
   { to: "/reports", icon: BarChart3, label: "Relatórios" },
+  { to: "/vendedores", icon: Users, label: "Vendedores" },
 ];
 
 export default function AppLayout() {
@@ -23,7 +24,6 @@ export default function AppLayout() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    // Mark first-ever load as the initial update reference
     if (!localStorage.getItem("lastUpdateAt")) {
       const ts = new Date().toISOString();
       localStorage.setItem("lastUpdateAt", ts);
@@ -41,21 +41,18 @@ export default function AppLayout() {
     setRefreshing(true);
     toast.loading("Limpando cache e atualizando...", { id: "refresh" });
     try {
-      // Clear caches
       if ("caches" in window) {
         const keys = await caches.keys();
         await Promise.all(keys.map((k) => caches.delete(k)));
       }
-      // Unregister service workers
       if ("serviceWorker" in navigator) {
         const regs = await navigator.serviceWorker.getRegistrations();
         await Promise.all(regs.map((r) => r.unregister()));
       }
       localStorage.setItem("lastUpdateAt", new Date().toISOString());
     } catch (err) {
-      // ignore — still reload
+      // A página ainda será recarregada se a limpeza de cache falhar.
     } finally {
-      // Force a hard reload bypassing browser cache via cache-busting param
       const url = new URL(window.location.href);
       url.searchParams.set("_r", Date.now().toString());
       window.location.replace(url.toString());
@@ -68,7 +65,6 @@ export default function AppLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Desktop Sidebar */}
       <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-60 flex-col border-r border-border/60 bg-card/60 backdrop-blur">
         <div className="flex items-center gap-2 px-5 py-5 border-b border-border/50">
           <Droplets className="h-6 w-6 text-primary" />
@@ -121,7 +117,6 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      {/* Header */}
       <header className="lg:hidden sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/50 bg-background/95 backdrop-blur px-4">
         <div className="flex items-center gap-2 min-w-0">
           <Droplets className="h-5 w-5 text-primary shrink-0" />
@@ -139,21 +134,19 @@ export default function AppLayout() {
         </button>
       </header>
 
-      {/* Content */}
       <main className="flex-1 overflow-y-auto pb-20 lg:pb-8 px-4 py-4 lg:pl-[15.5rem] lg:pr-8 lg:py-8">
         <Outlet />
       </main>
 
-      {/* Bottom Nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/50 bg-background/95 backdrop-blur">
-        <div className="grid grid-cols-5 items-center py-2">
+        <div className="grid grid-cols-6 items-center py-2">
           {navItems.slice(0, 2).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-col items-center gap-0.5 px-1 py-1.5 text-[11px] transition-colors",
+                  "flex flex-col items-center gap-0.5 px-1 py-1.5 text-[10px] transition-colors",
                   isActive ? "text-primary" : "text-muted-foreground"
                 )
               }
@@ -163,12 +156,11 @@ export default function AppLayout() {
             </NavLink>
           ))}
 
-          {/* Center: Vender */}
           <NavLink
             to="/sell"
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center gap-0.5 px-1 py-1.5 text-[11px] transition-colors relative -mt-5",
+                "flex flex-col items-center gap-0.5 px-1 py-1.5 text-[10px] transition-colors relative -mt-5",
                 isActive ? "text-primary" : "text-muted-foreground"
               )
             }
@@ -194,7 +186,7 @@ export default function AppLayout() {
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-col items-center gap-0.5 px-1 py-1.5 text-[11px] transition-colors",
+                  "flex flex-col items-center gap-0.5 px-1 py-1.5 text-[10px] transition-colors",
                   isActive ? "text-primary" : "text-muted-foreground"
                 )
               }
@@ -204,12 +196,11 @@ export default function AppLayout() {
             </NavLink>
           ))}
 
-          {/* Refresh / clear cache */}
           <button
             type="button"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex flex-col items-center gap-0.5 px-1 py-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+            className="flex flex-col items-center gap-0.5 px-1 py-1.5 text-[10px] text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
           >
             <RefreshCw className={cn("h-5 w-5", refreshing && "animate-spin")} />
             <span>Atualizar</span>
