@@ -23,6 +23,8 @@ const PurchaseOrder = lazy(() => import("@/pages/PurchaseOrder"));
 const Restock = lazy(() => import("@/pages/Restock"));
 const Patrimonio = lazy(() => import("@/pages/Patrimonio"));
 const PixCopy = lazy(() => import("@/pages/PixCopy"));
+const Sellers = lazy(() => import("@/pages/Sellers"));
+const SellerPortal = lazy(() => import("@/pages/SellerPortal"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const PageFallback = () => (
@@ -45,6 +47,7 @@ const App = () => (
             <Route path="/catalogo" element={<Catalog />} />
             <Route path="/catalogo/:id" element={<Catalog />} />
             <Route path="/pix" element={<PixCopy />} />
+            <Route path="/vendedor/:token" element={<SellerPortal />} />
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<Navigate to="/catalogo" replace />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
@@ -59,6 +62,7 @@ const App = () => (
               <Route path="/compras/nova" element={<Restock />} />
               <Route path="/patrimonio" element={<Patrimonio />} />
               <Route path="/catalogo-admin" element={<CatalogAdmin />} />
+              <Route path="/vendedores" element={<Sellers />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, BarChart3, LogOut, Droplets, RefreshCw } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, BarChart3, LogOut, Droplets, RefreshCw, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -12,6 +12,7 @@ const navItems = [
   { to: "/products", icon: Package, label: "Produtos" },
   { to: "/sell", icon: ShoppingCart, label: "Vender" },
   { to: "/reports", icon: BarChart3, label: "Relatórios" },
+  { to: "/vendedores", icon: Users, label: "Vendedores" },
 ];
 
 export default function AppLayout() {
@@ -146,7 +147,7 @@ export default function AppLayout() {
 
       {/* Bottom Nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/50 bg-background/95 backdrop-blur">
-        <div className="grid grid-cols-5 items-center py-2">
+        <div className="grid grid-cols-6 items-center py-2">
           {navItems.slice(0, 2).map((item) => (
             <NavLink
               key={item.to}
