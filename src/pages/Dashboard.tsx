@@ -3,12 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import {
   Package, Droplets, TrendingUp, AlertTriangle, ArrowRight,
-  DollarSign, ShoppingBag, Wallet, Droplet, Boxes,
+  DollarSign, ShoppingBag, Wallet, Droplet, Boxes, Users, Activity,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { ML_PER_FRASCO, formatFrascos, perFrasco, priceFrascoRounded } from "@/lib/frascos";
+import { isSellerCoreReady, sellerDb } from "@/integrations/supabase/sellerDb";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -42,6 +43,57 @@ export default function Dashboard() {
       return data;
     },
     enabled: !!user,
+  });
+
+  const { data: coreReady } = useQuery({
+    queryKey: ["seller-core-ready"],
+    queryFn: async () => isSellerCoreReady(),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  const { data: coreStats } = useQuery({
+    queryKey: ["dashboard-core-stats"],
+    enabled: !!user && !!coreReady,
+    queryFn: async () => {
+      const start = new Date();
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      const dayStart = new Date();
+      dayStart.setHours(0, 0, 0, 0);
+      const [sales, stock, commissions, customersCount, movements] = await Promise.all([
+        sellerDb.from("sales_v2").select("id,total_amount,total_cost,total_commission,created_at,status,seller_id"),
+        sellerDb.from("v_available_stock").select("*"),
+        sellerDb.from("v_seller_commission").select("*"),
+        sellerDb.from("customers").select("id", { count: "exact", head: true }),
+        sellerDb.from("inventory_movements").select("id,created_at,kind,quantity,variant_id,location_id,note").order("created_at", { ascending: false }).limit(6),
+      ]);
+      const salesRows = (sales.data ?? []).filter((s: any) => s.status === "confirmed");
+      const monthSales = salesRows.filter((s: any) => new Date(s.created_at) >= start);
+      const daySales = salesRows.filter((s: any) => new Date(s.created_at) >= dayStart);
+      const stockRows = (stock.data ?? []) as Array<{ balance: number; available?: number }>;
+      const commissionRows = (commissions.data ?? []) as Array<{ total_due: number }>;
+      const monthRevenue = monthSales.reduce((sum: number, s: any) => sum + Number(s.total_amount || 0), 0);
+      const monthProfit = monthSales.reduce(
+        (sum: number, s: any) => sum + (Number(s.total_amount || 0) - Number(s.total_cost || 0)),
+        0,
+      );
+      const dayRevenue = daySales.reduce((sum: number, s: any) => sum + Number(s.total_amount || 0), 0);
+      return {
+        stockUnits: stockRows.reduce((sum, r) => sum + Number(r.balance || 0), 0),
+        stockAvailable: stockRows.reduce((sum, r) => sum + Number(r.available ?? r.balance ?? 0), 0),
+        lowStock: stockRows.filter((r) => Number(r.available ?? r.balance ?? 0) <= 3).length,
+        salesDayCount: daySales.length,
+        salesDayValue: dayRevenue,
+        salesMonthCount: monthSales.length,
+        salesMonthValue: monthRevenue,
+        monthProfit,
+        pendingCommission: commissionRows.reduce((sum, r) => sum + Number(r.total_due || 0), 0),
+        customersCount: customersCount.count ?? 0,
+        recentMovements: movements.data ?? [],
+      };
+    },
+    staleTime: 30_000,
   });
 
   const totalProducts = products?.length ?? 0;
@@ -280,6 +332,72 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {coreReady && coreStats && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              Consignação e vendedores
+            </h2>
+            <button
+              onClick={() => navigate("/vendedores")}
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
+              Abrir <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div className="rounded-2xl border border-border/60 bg-card p-3.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Vendas do dia</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {coreStats.salesDayCount} · {brl(coreStats.salesDayValue)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-card p-3.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Vendas do mês</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {coreStats.salesMonthCount} · {brl(coreStats.salesMonthValue)}
+              </p>
+              <p className="text-[11px] text-muted-foreground">Lucro {brl(coreStats.monthProfit)}</p>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-card p-3.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Comissão pendente</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{brl(coreStats.pendingCommission)}</p>
+              <p className="text-[11px] text-muted-foreground">{coreStats.customersCount} clientes</p>
+            </div>
+            <div className={`rounded-2xl border p-3.5 ${coreStats.lowStock > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-border/60 bg-card"}`}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Estoque v2</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {coreStats.stockAvailable} un
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {coreStats.lowStock > 0 ? `${coreStats.lowStock} em baixo` : "Sem baixo estoque"}
+              </p>
+            </div>
+          </div>
+          {coreStats.recentMovements.length > 0 && (
+            <div className="rounded-2xl border border-border/60 bg-card p-4">
+              <p className="text-xs font-semibold text-foreground flex items-center gap-2 mb-2">
+                <Activity className="w-3.5 h-3.5 text-primary" />
+                Últimas movimentações
+              </p>
+              <ul className="space-y-1 text-xs">
+                {coreStats.recentMovements.map((m: any) => (
+                  <li key={m.id} className="flex justify-between border-t border-border/40 py-1.5">
+                    <span className="truncate">
+                      {format(new Date(m.created_at), "dd/MM HH:mm", { locale: ptBR })} · {m.kind}
+                    </span>
+                    <span className={Number(m.quantity) < 0 ? "text-destructive font-medium" : "text-emerald-600 font-medium"}>
+                      {Number(m.quantity) > 0 ? `+${m.quantity}` : m.quantity}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* atalhos movidos para o topo */}
     </div>
