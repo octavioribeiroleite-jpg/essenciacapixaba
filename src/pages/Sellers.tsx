@@ -56,7 +56,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { normalizePhone } from "@/lib/commission";
-import { fetchViaCep, maskCep, maskPhone } from "@/lib/viaCep";
+import { lookupCep, maskCep, maskPhone } from "@/lib/viaCep";
 
 const brl = (value: number) =>
   Number(value || 0).toLocaleString("pt-BR", {
@@ -324,8 +324,8 @@ function SellersTab({ context, data }: { context: ActorContext; data: CoreData }
     });
   };
 
-  const lookupCep = async () => {
-    const info = await fetchViaCep(form.zip);
+  const runCepLookup = async () => {
+    const info = await lookupCep(form.zip);
     if (!info) {
       toast.error("CEP não encontrado");
       return;
@@ -391,7 +391,7 @@ function SellersTab({ context, data }: { context: ActorContext; data: CoreData }
               <Input
                 value={form.zip}
                 onChange={(event) => setForm({ ...form, zip: maskCep(event.target.value) })}
-                onBlur={lookupCep}
+                onBlur={runCepLookup}
                 inputMode="numeric"
               />
             </div>
