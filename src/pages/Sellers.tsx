@@ -200,8 +200,8 @@ function SellersTab({ context, data }: { context: ActorContext; data: CoreData }
         commission_value: commissionValue,
       };
       const result = editing
-        ? await sellerDb.from("sellers_v2").update(payload).eq("id", editing.id)
-        : await sellerDb.from("sellers_v2").insert(payload);
+        ? await sellerDb.from("sellers_v2").update(payload as never).eq("id", editing.id)
+        : await sellerDb.from("sellers_v2").insert(payload as never);
       if (result.error) throw result.error;
     },
     onSuccess: () => {
