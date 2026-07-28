@@ -439,7 +439,9 @@ export default function Customers() {
                     </p>
                   </div>
                   {isBirthday && (
-                    <Cake className="h-4 w-4 text-pink-500 shrink-0" title="Aniversariante do mês" />
+                    <span title="Aniversariante do mês" className="shrink-0">
+                      <Cake className="h-4 w-4 text-pink-500" />
+                    </span>
                   )}
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-center">
