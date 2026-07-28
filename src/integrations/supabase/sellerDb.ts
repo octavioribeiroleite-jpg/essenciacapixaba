@@ -177,7 +177,8 @@ export async function isSellerCoreReady(): Promise<boolean> {
 export async function getActorContext(): Promise<ActorContext> {
   const { data, error } = await sellerDb.rpc("rpc_actor_context" as never);
   if (error) throw error;
-  const row = (Array.isArray(data) ? data[0] : data) as ActorContext | undefined;
+  const raw = data as unknown;
+  const row = (Array.isArray(raw) ? raw[0] : raw) as ActorContext | undefined;
   if (!row) throw new Error("Usuário sem perfil no núcleo de vendedores");
   return row;
 }
