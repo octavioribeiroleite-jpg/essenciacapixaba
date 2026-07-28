@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
 import {
   Search, MessageCircle, Share2, Sparkles, Droplet, User, Clock, Wind,
-  SlidersHorizontal, GitCompare, Check, CalendarClock, Copy, FileDown, ArrowLeft,
+  SlidersHorizontal, GitCompare, Check, CalendarClock, Copy, FileDown, ArrowLeft, LogIn,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -297,6 +297,16 @@ export default function Catalog() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
+            {!inApp && (
+              <button
+                onClick={() => navigate("/login")}
+                className="h-8 px-2.5 rounded-md inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                title="Entrar na área de gestão"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Entrar</span>
+              </button>
+            )}
             <button
               onClick={exportPDF}
               className="h-8 px-2.5 rounded-md flex items-center gap-1 hover:bg-secondary transition-colors text-xs font-semibold text-violet-700"

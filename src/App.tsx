@@ -4,7 +4,7 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import { Droplets } from "lucide-react";
@@ -32,6 +32,14 @@ const PageFallback = () => (
   </div>
 );
 
+const RootRedirect = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) return <PageFallback />;
+
+  return <Navigate to={user ? "/dashboard" : "/login"} replace />;
+};
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -47,7 +55,7 @@ const App = () => (
             <Route path="/catalogo/:id" element={<Catalog />} />
             <Route path="/pix" element={<PixCopy />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Navigate to="/catalogo" replace />} />
+            <Route path="/" element={<RootRedirect />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/products" element={<Products />} />

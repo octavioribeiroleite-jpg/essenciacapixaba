@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -104,6 +104,14 @@ export default function Login() {
             >
               {isSignUp ? "Já tem conta? Entre aqui" : "Não tem conta? Cadastre-se"}
             </button>
+            <div className="mt-4 border-t border-border/60 pt-4 text-center">
+              <Link
+                to="/catalogo"
+                className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
+              >
+                Ver catálogo público
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>
