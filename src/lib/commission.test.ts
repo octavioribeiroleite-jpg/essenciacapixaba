@@ -81,3 +81,66 @@ describe("normalizePhone", () => {
     expect(normalizePhone(null)).toBeNull();
   });
 });
+
+// ------------------------------------------------------------------
+// Regras de autorização/estado (espelham a RPC no servidor)
+// ------------------------------------------------------------------
+
+type Role = "admin" | "seller";
+
+/** Espelho puro da checagem `rpc_reverse_sale` (para admin + estado). */
+function canReverseSale(role: Role, sale: { status: "confirmed" | "reversed"; hasSettlementAllocations: boolean }, reason: string) {
+  if (role !== "admin") return { ok: false, err: "apenas admin" };
+  if (!reason || reason.trim().length < 3) return { ok: false, err: "justificativa obrigatória" };
+  if (sale.status === "reversed") return { ok: false, err: "venda já estornada" };
+  if (sale.hasSettlementAllocations) return { ok: false, err: "reverta o repasse antes" };
+  return { ok: true as const };
+}
+
+describe("autorização de estorno de venda", () => {
+  it("seller nunca pode estornar", () => {
+    expect(canReverseSale("seller", { status: "confirmed", hasSettlementAllocations: false }, "erro").ok).toBe(false);
+  });
+  it("rejeita venda já estornada", () => {
+    expect(canReverseSale("admin", { status: "reversed", hasSettlementAllocations: false }, "engano").ok).toBe(false);
+  });
+  it("rejeita quando há comissão já repassada", () => {
+    const r = canReverseSale("admin", { status: "confirmed", hasSettlementAllocations: true }, "cliente devolveu");
+    expect(r.ok).toBe(false);
+    expect(r.err).toMatch(/repasse/);
+  });
+  it("exige justificativa mínima", () => {
+    expect(canReverseSale("admin", { status: "confirmed", hasSettlementAllocations: false }, "a").ok).toBe(false);
+  });
+  it("aceita admin com justificativa e sem repasse", () => {
+    expect(canReverseSale("admin", { status: "confirmed", hasSettlementAllocations: false }, "cliente devolveu").ok).toBe(true);
+  });
+});
+
+/** Espelho da checagem `rpc_adjust_stock` para sinal por kind. */
+type Kind = "initial" | "restock" | "return" | "loss" | "adjustment";
+function validateAdjust(kind: Kind, qty: number) {
+  if (qty === 0) return "quantidade não pode ser zero";
+  if (kind === "loss" && qty >= 0) return "loss precisa ser negativo";
+  if ((kind === "initial" || kind === "restock" || kind === "return") && qty <= 0)
+    return "entrada precisa ser positiva";
+  return null;
+}
+describe("sinal coerente por kind em ajuste", () => {
+  it("loss exige negativo", () => expect(validateAdjust("loss", 3)).toMatch(/negativo/));
+  it("restock exige positivo", () => expect(validateAdjust("restock", -1)).toMatch(/positiva/));
+  it("adjustment aceita qualquer sinal, exceto zero", () => {
+    expect(validateAdjust("adjustment", 0)).toMatch(/zero/);
+    expect(validateAdjust("adjustment", -2)).toBeNull();
+    expect(validateAdjust("adjustment", 2)).toBeNull();
+  });
+});
+
+/** Alocação de repasse: garantia de que overpayment concorrente é rejeitado. */
+describe("saldo devido após repasse anterior", () => {
+  it("bloqueia overpayment mesmo com FIFO", () => {
+    const items = [{ commissionAmount: 40, paidAmount: 40 }, { commissionAmount: 10, paidAmount: 0 }];
+    expect(commissionDue(items)).toBe(10);
+    expect(() => allocateSettlement(items, 11)).toThrow(/excede/);
+  });
+});
