@@ -111,7 +111,7 @@ function SellersTab({ ownerId, enabled }: { ownerId: string; enabled: boolean })
       setForm({ name: "", email: "", phone: "", active: true, commission_kind: "fixed_per_unit", commission_value: "0" });
       qc.invalidateQueries({ queryKey: ["sellers_v2", ownerId] });
     },
-    onError: (e: any) => toast.error(e?.message ?? "Falha ao salvar vendedor"),
+    onError: (e: Error) => toast.error(e?.message ?? "Falha ao salvar vendedor"),
   });
 
   const removeMutation = useMutation({
@@ -120,7 +120,7 @@ function SellersTab({ ownerId, enabled }: { ownerId: string; enabled: boolean })
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sellers_v2", ownerId] }),
-    onError: (e: any) => toast.error(e?.message ?? "Falha ao remover"),
+    onError: (e: Error) => toast.error(e?.message ?? "Falha ao remover"),
   });
 
   function loadForEdit(s: SellerRow) {
@@ -288,7 +288,7 @@ function CustomersTab({ ownerId, enabled }: { ownerId: string; enabled: boolean 
       setForm({ name: "", phone: "", email: "", note: "" });
       qc.invalidateQueries({ queryKey: ["customers", ownerId] });
     },
-    onError: (e: any) => toast.error(e?.message ?? "Falha ao salvar cliente"),
+    onError: (e: Error) => toast.error(e?.message ?? "Falha ao salvar cliente"),
   });
 
   return (
@@ -383,7 +383,7 @@ function SettlementsTab({ ownerId, enabled }: { ownerId: string; enabled: boolea
       setAmount("");
       qc.invalidateQueries();
     },
-    onError: (e: any) => toast.error(e?.message ?? "Falha no repasse"),
+    onError: (e: Error) => toast.error(e?.message ?? "Falha no repasse"),
   });
 
   return (
@@ -483,7 +483,7 @@ function ReverseTab({ enabled }: { enabled: boolean }) {
       toast.success("Venda estornada com movimentos compensatórios");
       setSaleId(""); setReason("");
     },
-    onError: (e: any) => toast.error(e?.message ?? "Falha ao estornar"),
+    onError: (e: Error) => toast.error(e?.message ?? "Falha ao estornar"),
   });
   return (
     <form
