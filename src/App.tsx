@@ -14,7 +14,6 @@ const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Products = lazy(() => import("@/pages/Products"));
 const ProductForm = lazy(() => import("@/pages/ProductForm"));
 const ProductDetail = lazy(() => import("@/pages/ProductDetail"));
-const Scanner = lazy(() => import("@/pages/Scanner"));
 const Sales = lazy(() => import("@/pages/Sales"));
 const Reports = lazy(() => import("@/pages/Reports"));
 const Catalog = lazy(() => import("@/pages/Catalog"));
@@ -24,6 +23,7 @@ const Restock = lazy(() => import("@/pages/Restock"));
 const Patrimonio = lazy(() => import("@/pages/Patrimonio"));
 const PixCopy = lazy(() => import("@/pages/PixCopy"));
 const Sellers = lazy(() => import("@/pages/Sellers"));
+const Customers = lazy(() => import("@/pages/Customers"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const PageFallback = () => (
@@ -53,7 +53,6 @@ const App = () => (
               <Route path="/products" element={<Products />} />
               <Route path="/products/new" element={<ProductForm />} />
               <Route path="/products/:id" element={<ProductDetail />} />
-              <Route path="/scan" element={<Scanner />} />
               <Route path="/sell" element={<Sales />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/pedidos" element={<PurchaseOrder />} />
@@ -61,6 +60,7 @@ const App = () => (
               <Route path="/patrimonio" element={<Patrimonio />} />
               <Route path="/catalogo-admin" element={<CatalogAdmin />} />
               <Route path="/vendedores" element={<Sellers />} />
+              <Route path="/clientes" element={<Customers />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
