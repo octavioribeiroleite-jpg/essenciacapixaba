@@ -49,37 +49,67 @@ export type Database = {
       }
       customers: {
         Row: {
+          address: string | null
+          birth_date: string | null
+          city: string | null
+          complement: string | null
+          cpf: string | null
           created_at: string
+          district: string | null
           email: string | null
           id: string
           name: string
           note: string | null
+          number: string | null
           owner_id: string
           phone: string | null
           seller_id: string | null
+          state: string | null
           updated_at: string
+          whatsapp: string | null
+          zip: string | null
         }
         Insert: {
+          address?: string | null
+          birth_date?: string | null
+          city?: string | null
+          complement?: string | null
+          cpf?: string | null
           created_at?: string
+          district?: string | null
           email?: string | null
           id?: string
           name: string
           note?: string | null
+          number?: string | null
           owner_id: string
           phone?: string | null
           seller_id?: string | null
+          state?: string | null
           updated_at?: string
+          whatsapp?: string | null
+          zip?: string | null
         }
         Update: {
+          address?: string | null
+          birth_date?: string | null
+          city?: string | null
+          complement?: string | null
+          cpf?: string | null
           created_at?: string
+          district?: string | null
           email?: string | null
           id?: string
           name?: string
           note?: string | null
+          number?: string | null
           owner_id?: string
           phone?: string | null
           seller_id?: string | null
+          state?: string | null
           updated_at?: string
+          whatsapp?: string | null
+          zip?: string | null
         }
         Relationships: [
           {
@@ -528,42 +558,54 @@ export type Database = {
       sellers_v2: {
         Row: {
           active: boolean
+          address: string | null
           commission_kind: Database["public"]["Enums"]["commission_kind"]
           commission_value: number
           created_at: string
           email: string | null
+          establishment_name: string | null
           id: string
           name: string
           owner_id: string
           phone: string | null
           updated_at: string
           user_id: string | null
+          whatsapp: string | null
+          zip: string | null
         }
         Insert: {
           active?: boolean
+          address?: string | null
           commission_kind?: Database["public"]["Enums"]["commission_kind"]
           commission_value?: number
           created_at?: string
           email?: string | null
+          establishment_name?: string | null
           id?: string
           name: string
           owner_id: string
           phone?: string | null
           updated_at?: string
           user_id?: string | null
+          whatsapp?: string | null
+          zip?: string | null
         }
         Update: {
           active?: boolean
+          address?: string | null
           commission_kind?: Database["public"]["Enums"]["commission_kind"]
           commission_value?: number
           created_at?: string
           email?: string | null
+          establishment_name?: string | null
           id?: string
           name?: string
           owner_id?: string
           phone?: string | null
           updated_at?: string
           user_id?: string | null
+          whatsapp?: string | null
+          zip?: string | null
         }
         Relationships: []
       }

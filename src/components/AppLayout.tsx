@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, BarChart3, LogOut, Droplets, RefreshCw, Users } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, BarChart3, LogOut, Droplets, RefreshCw, Users, UserRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -11,6 +11,7 @@ const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Início" },
   { to: "/products", icon: Package, label: "Produtos" },
   { to: "/sell", icon: ShoppingCart, label: "Vender" },
+  { to: "/clientes", icon: UserRound, label: "Clientes" },
   { to: "/reports", icon: BarChart3, label: "Relatórios" },
   { to: "/vendedores", icon: Users, label: "Vendedores" },
 ];

@@ -20,6 +20,10 @@ export interface SellerRow {
   active: boolean;
   commission_kind: CommissionKind;
   commission_value: number;
+  establishment_name: string | null;
+  whatsapp: string | null;
+  zip: string | null;
+  address: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +36,16 @@ export interface CustomerRow {
   phone: string | null;
   email: string | null;
   note: string | null;
+  cpf: string | null;
+  whatsapp: string | null;
+  birth_date: string | null;
+  zip: string | null;
+  address: string | null;
+  number: string | null;
+  complement: string | null;
+  district: string | null;
+  city: string | null;
+  state: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -177,7 +191,8 @@ export async function isSellerCoreReady(): Promise<boolean> {
 export async function getActorContext(): Promise<ActorContext> {
   const { data, error } = await sellerDb.rpc("rpc_actor_context" as never);
   if (error) throw error;
-  const row = (Array.isArray(data) ? data[0] : data) as ActorContext | undefined;
+  const raw = data as unknown;
+  const row = (Array.isArray(raw) ? raw[0] : raw) as ActorContext | undefined;
   if (!row) throw new Error("Usuário sem perfil no núcleo de vendedores");
   return row;
 }
