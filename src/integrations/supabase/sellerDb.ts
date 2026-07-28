@@ -20,6 +20,10 @@ export interface SellerRow {
   active: boolean;
   commission_kind: CommissionKind;
   commission_value: number;
+  establishment_name: string | null;
+  whatsapp: string | null;
+  zip: string | null;
+  address: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +36,16 @@ export interface CustomerRow {
   phone: string | null;
   email: string | null;
   note: string | null;
+  cpf: string | null;
+  whatsapp: string | null;
+  birth_date: string | null;
+  zip: string | null;
+  address: string | null;
+  number: string | null;
+  complement: string | null;
+  district: string | null;
+  city: string | null;
+  state: string | null;
   created_at: string;
   updated_at: string;
 }
