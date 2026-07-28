@@ -140,6 +140,58 @@ export interface VariantCatalogRow extends ProductVariantRow {
   brand: string | null;
 }
 
+export interface SaleItemRow {
+  id: string;
+  sale_id: string;
+  variant_id: string;
+  quantity: number;
+  unit_price: number;
+  unit_cost: number;
+  commission_kind: CommissionKind;
+  commission_value: number;
+  commission_amount: number;
+}
+
+export interface TransferItemRow {
+  id: string;
+  transfer_id: string;
+  variant_id: string;
+  quantity: number;
+  received_quantity: number | null;
+}
+
+export type MovementKind =
+  | "initial"
+  | "restock"
+  | "transfer_out"
+  | "transfer_in"
+  | "sale"
+  | "return"
+  | "loss"
+  | "adjustment"
+  | "reversal";
+
+export interface InventoryMovementRow {
+  id: string;
+  owner_id: string;
+  variant_id: string;
+  location_id: string;
+  kind: MovementKind;
+  quantity: number;
+  ref_table: string | null;
+  ref_id: string | null;
+  note: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export interface SettlementAllocationRow {
+  id: string;
+  settlement_id: string;
+  sale_item_id: string;
+  amount: number;
+}
+
 type TableDef<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row;
   Insert: Insert;
@@ -163,8 +215,12 @@ export interface SellerCoreDatabase {
       stock_locations: TableDef<StockLocationRow>;
       product_variants: TableDef<ProductVariantRow>;
       transfers: TableDef<TransferRow>;
+      transfer_items: TableDef<TransferItemRow>;
       sales_v2: TableDef<SaleV2Row>;
+      sale_items: TableDef<SaleItemRow>;
       settlements: TableDef<SettlementRow>;
+      settlement_allocations: TableDef<SettlementAllocationRow>;
+      inventory_movements: TableDef<InventoryMovementRow>;
     };
     Views: {
       v_stock_balances: ViewDef<StockBalanceRow>;
