@@ -141,7 +141,13 @@ export interface SellerCoreDatabase {
   };
 }
 
-export const sellerDb = supabase as unknown as SupabaseClient<SellerCoreDatabase>;
+// A tipagem `SellerCoreDatabase` está definida acima para documentar as
+// tabelas, RPCs e views. O cliente em runtime, porém, é exposto sem
+// generic para acomodar Insert/Update livres — a validação real vive nas
+// RPCs SECURITY DEFINER. Os componentes tipam as leituras via
+// `as SellerRow[]` / `as StockBalanceRow[]` etc.
+export const sellerDb: SupabaseClient = supabase as unknown as SupabaseClient;
+export type { SellerCoreDatabase as _SellerCoreDatabaseSchema };
 
 export async function isSellerCoreReady(): Promise<boolean> {
   try {
