@@ -6,6 +6,8 @@ import {
   AlertCircle,
   ArrowLeftRight,
   Boxes,
+  CheckCircle2,
+  ChevronRight,
   History,
   Loader2,
   Plus,
@@ -1464,7 +1466,15 @@ function SalesHistory({ context, data }: { context: ActorContext; data: CoreData
 // ============================================================
 // Clientes — reencaminhamento resumido (a página completa é /clientes)
 // ============================================================
-function CustomersTab({ context, data }: { context: ActorContext; data: CoreData }) {
+function CustomersTab({
+  context,
+  data,
+  onCustomerSaved,
+}: {
+  context: ActorContext;
+  data: CoreData;
+  onCustomerSaved?: () => void;
+}) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -1490,6 +1500,7 @@ function CustomersTab({ context, data }: { context: ActorContext; data: CoreData
       setPhone("");
       setEmail("");
       queryClient.invalidateQueries({ queryKey: ["seller-core", "customers"] });
+      onCustomerSaved?.();
     },
     onError: (error) => rpcError(error, "Falha ao salvar cliente"),
   });
@@ -1503,14 +1514,24 @@ function CustomersTab({ context, data }: { context: ActorContext; data: CoreData
           save.mutate();
         }}
       >
-        <h3 className="font-semibold">Novo cliente</h3>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Etapa 1</p>
+          <h3 className="font-semibold">Cadastre o cliente</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Comece pelo cliente que receberá o atendimento da consignação.
+          </p>
+        </div>
         <Input placeholder="Nome" value={name} onChange={(event) => setName(event.target.value)} />
         <Input placeholder="Telefone" value={phone} onChange={(event) => setPhone(maskPhone(event.target.value))} />
         <Input type="email" placeholder="E-mail" value={email} onChange={(event) => setEmail(event.target.value)} />
         {context.role === "admin" && (
           <SellerSelect sellers={data.sellers.data ?? []} value={seller} onChange={setSeller} allowEmpty />
         )}
-        <Button disabled={save.isPending}>Salvar cliente</Button>
+        <Button className="w-full sm:w-auto" disabled={save.isPending}>
+          {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Salvar e continuar para transferência
+          {!save.isPending && <ChevronRight className="ml-2 h-4 w-4" />}
+        </Button>
         <p className="text-xs text-muted-foreground">
           Para o CRM completo (endereço, aniversário, filtros e histórico), use a página <strong>Clientes</strong>.
         </p>
@@ -1742,6 +1763,7 @@ export default function Sellers() {
   const { user } = useAuth();
   const [ready, setReady] = useState<boolean | null>(null);
   const [context, setContext] = useState<ActorContext | null>(null);
+  const [activeTab, setActiveTab] = useState("customers");
 
   useEffect(() => {
     if (!user) return;
@@ -1758,6 +1780,7 @@ export default function Sellers() {
   }, [user]);
 
   const data = useCoreData(ready === true && context !== null);
+  const hasCustomers = (data.customers.data?.length ?? 0) > 0;
   if (!user) return null;
 
   if (ready === null) {
@@ -1786,29 +1809,106 @@ export default function Sellers() {
         <p className="text-sm text-muted-foreground">Carregando permissões…</p>
       )}
       {context && (
-        <Tabs defaultValue="stock">
-          <TabsList
-            className={`mb-4 grid h-auto w-full ${
-              context.role === "admin" ? "grid-cols-3 md:grid-cols-8" : "grid-cols-2 md:grid-cols-6"
-            }`}
-          >
-            <TabsTrigger value="stock"><Boxes className="mr-1 h-4 w-4" />Estoque</TabsTrigger>
-            <TabsTrigger value="transfers"><ArrowLeftRight className="mr-1 h-4 w-4" />Transferências</TabsTrigger>
-            <TabsTrigger value="sales"><ShoppingBag className="mr-1 h-4 w-4" />Vendas</TabsTrigger>
-            <TabsTrigger value="customers"><Users className="mr-1 h-4 w-4" />Clientes</TabsTrigger>
-            <TabsTrigger value="finance"><Wallet className="mr-1 h-4 w-4" />Comissões</TabsTrigger>
-            <TabsTrigger value="movements"><History className="mr-1 h-4 w-4" />Movimentações</TabsTrigger>
-            {context.role === "admin" && (
-              <TabsTrigger value="sellers"><UserRound className="mr-1 h-4 w-4" />Cadastro</TabsTrigger>
-            )}
-            {context.role === "admin" && (
-              <TabsTrigger value="history"><History className="mr-1 h-4 w-4" />Histórico</TabsTrigger>
-            )}
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          {context.role === "admin" && (
+            <section className="mb-5 rounded-xl border bg-card p-4 shadow-sm">
+              <div className="mb-4">
+                <h2 className="font-semibold">Nova consignação</h2>
+                <p className="text-sm text-muted-foreground">
+                  Siga as etapas na ordem. Ao salvar o cliente, você irá direto para a transferência.
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("customers")}
+                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                    activeTab === "customers" ? "border-primary bg-primary/5" : "hover:bg-muted/60"
+                  }`}
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">1</span>
+                  <span>
+                    <span className="block font-medium">Cadastrar cliente</span>
+                    <span className="text-xs text-muted-foreground">Nome e contato</span>
+                  </span>
+                  {hasCustomers && <CheckCircle2 className="ml-auto h-5 w-5 text-emerald-600" />}
+                </button>
+                <button
+                  type="button"
+                  disabled={!hasCustomers}
+                  onClick={() => setActiveTab("transfers")}
+                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    activeTab === "transfers" ? "border-primary bg-primary/5" : "hover:bg-muted/60"
+                  }`}
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">2</span>
+                  <span>
+                    <span className="block font-medium">Transferir produtos</span>
+                    <span className="text-xs text-muted-foreground">
+                      {hasCustomers ? "Escolher destino e itens" : "Cadastre um cliente primeiro"}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("sales")}
+                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                    activeTab === "sales" ? "border-primary bg-primary/5" : "hover:bg-muted/60"
+                  }`}
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold">3</span>
+                  <span>
+                    <span className="block font-medium">Registrar venda</span>
+                    <span className="text-xs text-muted-foreground">Quando o produto for vendido</span>
+                  </span>
+                </button>
+              </div>
+            </section>
+          )}
+
+          <div className="mb-4 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {context.role === "admin" ? "Fluxo principal" : "Minha operação"}
+            </p>
+            <TabsList className="grid h-auto w-full grid-cols-3">
+              <TabsTrigger value="customers"><Users className="mr-1 h-4 w-4" />Clientes</TabsTrigger>
+              <TabsTrigger value="transfers" disabled={context.role === "admin" && !hasCustomers}>
+                <ArrowLeftRight className="mr-1 h-4 w-4" />Transferir
+              </TabsTrigger>
+              <TabsTrigger value="sales"><ShoppingBag className="mr-1 h-4 w-4" />Vender</TabsTrigger>
+            </TabsList>
+          </div>
+
+          <div className="mb-4 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Consultar e administrar
+            </p>
+            <TabsList
+              className={`grid h-auto w-full ${
+                context.role === "admin" ? "grid-cols-2 md:grid-cols-5" : "grid-cols-3"
+              }`}
+            >
+              <TabsTrigger value="stock"><Boxes className="mr-1 h-4 w-4" />Estoque</TabsTrigger>
+              <TabsTrigger value="finance"><Wallet className="mr-1 h-4 w-4" />Comissões</TabsTrigger>
+              <TabsTrigger value="movements"><History className="mr-1 h-4 w-4" />Movimentações</TabsTrigger>
+              {context.role === "admin" && (
+                <TabsTrigger value="sellers"><UserRound className="mr-1 h-4 w-4" />Vendedores</TabsTrigger>
+              )}
+              {context.role === "admin" && (
+                <TabsTrigger value="history"><History className="mr-1 h-4 w-4" />Histórico</TabsTrigger>
+              )}
+            </TabsList>
+          </div>
           <TabsContent value="stock"><StockTab context={context} data={data} /></TabsContent>
           <TabsContent value="transfers"><TransfersTab context={context} data={data} /></TabsContent>
           <TabsContent value="sales"><SalesTab context={context} data={data} /></TabsContent>
-          <TabsContent value="customers"><CustomersTab context={context} data={data} /></TabsContent>
+          <TabsContent value="customers">
+            <CustomersTab
+              context={context}
+              data={data}
+              onCustomerSaved={() => setActiveTab("transfers")}
+            />
+          </TabsContent>
           <TabsContent value="finance"><FinanceTab context={context} data={data} /></TabsContent>
           <TabsContent value="movements"><MovementsTab context={context} data={data} /></TabsContent>
           {context.role === "admin" && (
