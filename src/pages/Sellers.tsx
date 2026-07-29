@@ -1792,16 +1792,26 @@ export default function Sellers() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-4">
-      <header className="mb-4 flex items-center gap-3">
-        <Users className="h-6 w-6 text-primary" />
-        <div>
-          <h1 className="text-2xl font-semibold">Vendedores e consignação</h1>
+    <div className="page-shell max-w-6xl">
+      <header className="premium-grid relative overflow-hidden rounded-[1.5rem] border border-white/5 bg-[#171512] p-5 text-white shadow-[0_16px_42px_rgba(28,22,14,0.14)] lg:p-6">
+        <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-[#c8a45d]/10 blur-3xl" />
+        <div className="relative flex items-center gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06]">
+            <Users className="h-5 w-5 text-[#d7b868]" />
+          </div>
+          <div>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#d8c7a3]">
+            Operação comercial
+          </p>
+          <h1 className="text-xl font-semibold tracking-tight text-white lg:text-2xl">Vendedores e consignação</h1>
           {context && (
-            <p className="text-xs text-muted-foreground">
-              {context.role === "admin" ? "Acesso administrativo" : "Portal do vendedor"}
+            <p className="mt-1 text-xs text-white/55">
+              {context.role === "admin"
+                ? "Cadastre clientes, transfira produtos e acompanhe cada etapa."
+                : "Consulte seu estoque, vendas, comissões e recebimentos."}
             </p>
           )}
+          </div>
         </div>
       </header>
       {ready === false && <SetupBanner />}
@@ -1809,11 +1819,12 @@ export default function Sellers() {
         <p className="text-sm text-muted-foreground">Carregando permissões…</p>
       )}
       {context && (
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           {context.role === "admin" && (
-            <section className="mb-5 rounded-xl border bg-card p-4 shadow-sm">
+            <section className="app-card p-4 lg:p-5">
               <div className="mb-4">
-                <h2 className="font-semibold">Nova consignação</h2>
+                <p className="eyebrow">Fluxo guiado</p>
+                <h2 className="section-title">Nova consignação</h2>
                 <p className="text-sm text-muted-foreground">
                   Siga as etapas na ordem. Ao salvar o cliente, você irá direto para a transferência.
                 </p>
@@ -1822,8 +1833,10 @@ export default function Sellers() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("customers")}
-                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                    activeTab === "customers" ? "border-primary bg-primary/5" : "hover:bg-muted/60"
+                  className={`flex min-h-[76px] items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    activeTab === "customers"
+                      ? "border-primary/50 bg-primary/[0.07] shadow-[0_5px_16px_rgba(155,116,44,0.08)]"
+                      : "border-border/70 bg-muted/20 hover:border-primary/25 hover:bg-muted/50"
                   }`}
                 >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">1</span>
@@ -1837,8 +1850,10 @@ export default function Sellers() {
                   type="button"
                   disabled={!hasCustomers}
                   onClick={() => setActiveTab("transfers")}
-                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                    activeTab === "transfers" ? "border-primary bg-primary/5" : "hover:bg-muted/60"
+                  className={`flex min-h-[76px] items-center gap-3 rounded-xl border p-3 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                    activeTab === "transfers"
+                      ? "border-primary/50 bg-primary/[0.07] shadow-[0_5px_16px_rgba(155,116,44,0.08)]"
+                      : "border-border/70 bg-muted/20 hover:border-primary/25 hover:bg-muted/50"
                   }`}
                 >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">2</span>
@@ -1852,8 +1867,10 @@ export default function Sellers() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("sales")}
-                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                    activeTab === "sales" ? "border-primary bg-primary/5" : "hover:bg-muted/60"
+                  className={`flex min-h-[76px] items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    activeTab === "sales"
+                      ? "border-primary/50 bg-primary/[0.07] shadow-[0_5px_16px_rgba(155,116,44,0.08)]"
+                      : "border-border/70 bg-muted/20 hover:border-primary/25 hover:bg-muted/50"
                   }`}
                 >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold">3</span>
@@ -1866,11 +1883,11 @@ export default function Sellers() {
             </section>
           )}
 
-          <div className="mb-4 space-y-2">
+          <div className="app-card space-y-3 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {context.role === "admin" ? "Fluxo principal" : "Minha operação"}
             </p>
-            <TabsList className="grid h-auto w-full grid-cols-3">
+            <TabsList className="grid h-auto w-full grid-cols-3 rounded-xl bg-muted/70 p-1">
               <TabsTrigger value="customers"><Users className="mr-1 h-4 w-4" />Clientes</TabsTrigger>
               <TabsTrigger value="transfers" disabled={context.role === "admin" && !hasCustomers}>
                 <ArrowLeftRight className="mr-1 h-4 w-4" />Transferir
@@ -1879,12 +1896,12 @@ export default function Sellers() {
             </TabsList>
           </div>
 
-          <div className="mb-4 space-y-2">
+          <div className="app-card space-y-3 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Consultar e administrar
             </p>
             <TabsList
-              className={`grid h-auto w-full ${
+              className={`grid h-auto w-full rounded-xl bg-muted/70 p-1 ${
                 context.role === "admin" ? "grid-cols-2 md:grid-cols-5" : "grid-cols-3"
               }`}
             >

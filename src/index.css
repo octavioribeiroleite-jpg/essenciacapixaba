@@ -4,13 +4,13 @@
 
 @layer base {
   :root {
-    --background: 40 30% 98%;
-    --foreground: 30 25% 12%;
+    --background: 42 24% 97%;
+    --foreground: 28 22% 11%;
     --card: 0 0% 100%;
     --card-foreground: 30 25% 12%;
     --popover: 0 0% 100%;
     --popover-foreground: 30 25% 12%;
-    --primary: 38 70% 45%;
+    --primary: 38 68% 42%;
     --primary-foreground: 40 30% 98%;
     --secondary: 40 25% 94%;
     --secondary-foreground: 30 25% 12%;
@@ -20,10 +20,10 @@
     --accent-foreground: 40 30% 98%;
     --destructive: 0 72% 48%;
     --destructive-foreground: 40 30% 98%;
-    --border: 36 20% 88%;
-    --input: 36 20% 88%;
+    --border: 36 17% 86%;
+    --input: 36 17% 84%;
     --ring: 38 70% 45%;
-    --radius: 0.75rem;
+    --radius: 0.875rem;
     --sidebar-background: 40 30% 97%;
     --sidebar-foreground: 30 25% 12%;
     --sidebar-primary: 38 70% 45%;
@@ -46,6 +46,15 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(circle at 88% 4%, hsl(38 68% 42% / 0.06), transparent 28rem),
+      linear-gradient(180deg, hsl(42 30% 98%), hsl(40 18% 96%));
+    background-attachment: fixed;
+  }
+  h1, h2, h3 {
+    letter-spacing: -0.025em;
   }
 }
 
@@ -115,7 +124,7 @@
   }
   .hover-lift:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px hsl(38 70% 45% / 0.10);
+    box-shadow: 0 14px 34px hsl(28 30% 15% / 0.09);
   }
 
   @media (min-width: 1024px) {
@@ -142,6 +151,57 @@
 
 /* ====== Premium toast (Sonner) ====== */
 @layer components {
+  .page-shell {
+    @apply mx-auto w-full max-w-7xl space-y-6 pb-24 lg:pb-8;
+  }
+
+  .page-heading {
+    @apply text-2xl font-semibold tracking-tight text-foreground lg:text-[1.75rem];
+  }
+
+  .page-subtitle {
+    @apply mt-1 text-sm leading-relaxed text-muted-foreground;
+  }
+
+  .eyebrow {
+    @apply text-[10px] font-bold uppercase tracking-[0.16em] text-primary;
+  }
+
+  .app-card {
+    @apply rounded-2xl border border-border/70 bg-card shadow-[0_1px_2px_rgba(28,24,18,0.03),0_10px_28px_rgba(28,24,18,0.035)];
+  }
+
+  .app-card-interactive {
+    @apply app-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_16px_36px_rgba(28,24,18,0.08)];
+  }
+
+  .metric-card {
+    @apply app-card relative overflow-hidden p-4 lg:p-5;
+  }
+
+  .section-heading {
+    @apply flex items-center justify-between gap-3;
+  }
+
+  .section-title {
+    @apply text-base font-semibold text-foreground;
+  }
+
+  .soft-divider {
+    @apply border-t border-border/60;
+  }
+
+  .status-dot {
+    @apply inline-block h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.12)];
+  }
+
+  .premium-grid {
+    background-image:
+      linear-gradient(hsl(0 0% 100% / 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(0 0% 100% / 0.025) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
   [data-sonner-toaster] {
     --width: 360px;
   }

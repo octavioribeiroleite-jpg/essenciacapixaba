@@ -167,17 +167,17 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-4 lg:p-0 space-y-4 max-w-lg lg:max-w-7xl mx-auto pb-24 lg:pb-8">
+    <div className="page-shell">
       {/* Header premium escuro — identidade da marca */}
       <div
-        className="fade-in relative overflow-hidden rounded-3xl p-5 lg:p-6 shadow-[0_8px_30px_rgba(17,17,17,0.08)]"
-        style={{ background: "#111111" }}
+        className="premium-grid fade-in relative overflow-hidden rounded-[1.5rem] border border-white/5 bg-[#171512] p-5 shadow-[0_18px_50px_rgba(28,22,14,0.16)] lg:p-7"
       >
         <div
           className="absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-[0.07] blur-3xl"
           style={{ background: "#C8A45D" }}
         />
-        <div className="relative flex items-center gap-4">
+        <div className="relative flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-4">
           <div
             className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
             style={{
@@ -188,34 +188,38 @@ export default function Dashboard() {
             <Droplet className="w-6 h-6" style={{ color: "#C8A45D" }} strokeWidth={1.5} />
           </div>
           <div className="min-w-0">
-            <p
-              className="text-[11px] capitalize tracking-wide"
-              style={{ color: "#D8C7A3" }}
-            >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#d8c7a3]">
               {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </p>
             <h1
-              className="mt-0.5 leading-tight text-xl lg:text-2xl font-semibold tracking-tight"
+              className="mt-1 text-xl font-semibold leading-tight tracking-tight lg:text-[1.75rem]"
               style={{ color: "#FFFFFF" }}
             >
               Essência Capixaba
             </h1>
             <p className="text-xs mt-1" style={{ color: "#D8C7A3" }}>
-              Gestão de perfumes, estoque e vendas.
+              Acompanhe a operação e tome decisões com segurança.
             </p>
           </div>
+          </div>
+          <button
+            onClick={() => navigate("/sell")}
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#c8a45d] to-[#a77d31] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 transition-transform hover:-translate-y-0.5"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            Registrar venda
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         {stats.map((stat, i) => {
           const Icon = stat.icon;
           const isMoney = stat.value.startsWith("R$");
           return (
             <div
               key={i}
-              className="fade-in rounded-2xl p-3.5 flex flex-col gap-2 hover-lift transition-shadow"
-              style={{ background: "#FFFFFF", border: "1px solid #EAE7DF" }}
+              className="metric-card fade-in flex flex-col gap-3 transition-shadow hover-lift"
             >
               <div className="flex items-center justify-between">
                 <span
@@ -242,44 +246,52 @@ export default function Dashboard() {
         })}
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <section className="space-y-3">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Ações rápidas</p>
+            <h2 className="section-title">O que você deseja fazer?</h2>
+          </div>
+        </div>
+      <div className="grid grid-cols-3 gap-2.5 lg:gap-4">
         <button
           onClick={() => navigate("/products")}
-          className="fade-in hover-lift rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 p-3 flex flex-col items-center justify-center gap-1.5 text-center hover:border-amber-400 transition-all"
+          className="app-card-interactive fade-in flex min-h-24 flex-col items-center justify-center gap-2 p-3 text-center"
         >
-          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center shadow-sm">
-            <Boxes className="w-4 h-4 text-white" strokeWidth={2.2} />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4efe3] text-[#8a6d2e]">
+            <Boxes className="h-[18px] w-[18px]" strokeWidth={2.2} />
           </div>
           <p className="text-[11px] font-semibold text-foreground leading-tight">Meu estoque</p>
         </button>
         <button
           onClick={() => navigate("/patrimonio")}
-          className="fade-in hover-lift rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-3 flex flex-col items-center justify-center gap-1.5 text-center hover:border-emerald-400 transition-all"
+          className="app-card-interactive fade-in flex min-h-24 flex-col items-center justify-center gap-2 p-3 text-center"
         >
-          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
-            <Wallet className="w-4 h-4 text-white" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+            <Wallet className="h-[18px] w-[18px]" />
           </div>
           <p className="text-[11px] font-semibold text-foreground leading-tight">Patrimônio</p>
         </button>
         <button
           onClick={() => navigate("/pedidos")}
-          className={`fade-in hover-lift rounded-2xl border p-3 flex flex-col items-center justify-center gap-1.5 text-center transition-all ${
+          className={`app-card-interactive fade-in flex min-h-24 flex-col items-center justify-center gap-2 p-3 text-center ${
             lowStock.length > 0
-              ? "border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 hover:border-amber-400"
-              : "border-border/60 bg-card hover:border-primary/50"
+              ? "border-amber-300/70 bg-amber-50/70"
+              : ""
           }`}
         >
-          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-            <AlertTriangle className="w-4 h-4 text-white" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+            <AlertTriangle className="h-[18px] w-[18px]" />
           </div>
           <p className="text-[11px] font-semibold text-foreground leading-tight">
             Estoque baixo{lowStock.length > 0 && ` (${lowStock.length})`}
           </p>
         </button>
       </div>
+      </section>
 
-      <div className="fade-in rounded-2xl border border-border/60 bg-card p-4 space-y-1">
-        <div className="flex items-center justify-between mb-3">
+      <div className="app-card fade-in space-y-1 p-4 lg:p-5">
+        <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShoppingBag className="w-4 h-4 text-emerald-500" />
             <h2 className="text-sm font-semibold text-foreground">Vendas Recentes</h2>
@@ -334,9 +346,9 @@ export default function Dashboard() {
       </div>
 
       {coreReady && coreStats && (
-        <div className="space-y-3">
+        <div className="app-card space-y-4 p-4 lg:p-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <h2 className="section-title flex items-center gap-2">
               <Users className="w-4 h-4 text-primary" />
               Consignação e vendedores
             </h2>
@@ -348,25 +360,25 @@ export default function Dashboard() {
             </button>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-            <div className="rounded-2xl border border-border/60 bg-card p-3.5">
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-3.5">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Vendas do dia</p>
               <p className="mt-1 text-lg font-semibold text-foreground">
                 {coreStats.salesDayCount} · {brl(coreStats.salesDayValue)}
               </p>
             </div>
-            <div className="rounded-2xl border border-border/60 bg-card p-3.5">
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-3.5">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Vendas do mês</p>
               <p className="mt-1 text-lg font-semibold text-foreground">
                 {coreStats.salesMonthCount} · {brl(coreStats.salesMonthValue)}
               </p>
               <p className="text-[11px] text-muted-foreground">Lucro {brl(coreStats.monthProfit)}</p>
             </div>
-            <div className="rounded-2xl border border-border/60 bg-card p-3.5">
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-3.5">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Comissão pendente</p>
               <p className="mt-1 text-lg font-semibold text-foreground">{brl(coreStats.pendingCommission)}</p>
               <p className="text-[11px] text-muted-foreground">{coreStats.customersCount} clientes</p>
             </div>
-            <div className={`rounded-2xl border p-3.5 ${coreStats.lowStock > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-border/60 bg-card"}`}>
+            <div className={`rounded-xl border p-3.5 ${coreStats.lowStock > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-border/60 bg-muted/30"}`}>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Estoque v2</p>
               <p className="mt-1 text-lg font-semibold text-foreground">
                 {coreStats.stockAvailable} un
@@ -377,7 +389,7 @@ export default function Dashboard() {
             </div>
           </div>
           {coreStats.recentMovements.length > 0 && (
-            <div className="rounded-2xl border border-border/60 bg-card p-4">
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
               <p className="text-xs font-semibold text-foreground flex items-center gap-2 mb-2">
                 <Activity className="w-3.5 h-3.5 text-primary" />
                 Últimas movimentações
